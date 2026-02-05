@@ -1,0 +1,8 @@
+[sonarqube]
+enabled = true
+port = http,https
+filter = sonarqube
+logpath = /opt/sonarqube/logs/web.log
+maxretry = {{ fail2ban_maxretry }}
+bantime = {{ fail2ban_bantime }}
+findtime = {{ fail2ban_findtime }}

@@ -1,0 +1,81 @@
+---
+- name: Install Java dependencies
+  apt:
+    name:
+      - fontconfig
+      - openjdk-21-jre
+    state: present
+
+- name: Download Jenkins GPG key
+  get_url:
+    url: https://pkg.jenkins.io/debian-stable/jenkins.io-2026.key
+    dest: /etc/apt/keyrings/jenkins-keyring.asc
+    mode: "0644"
+
+- name: Add Jenkins repository
+  apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/"
+    filename: jenkins
+    state: present
+
+- name: Update apt cache after adding Jenkins repo
+  apt:
+    update_cache: yes
+
+- name: Install Jenkins
+  apt:
+    name: jenkins
+    state: present
+
+- name: Create Jenkins systemd override directory
+  file:
+    path: /etc/systemd/system/jenkins.service.d
+    state: directory
+    mode: "0755"
+
+- name: Configure Jenkins to listen on localhost only
+  template:
+    src: jenkins.override.j2
+    dest: /etc/systemd/system/jenkins.service.d/override.conf
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart Jenkins
+
+- name: Ensure Jenkins service is running
+  service:
+    name: jenkins
+    state: started
+    enabled: yes
+
+- name: Wait for Jenkins to start
+  wait_for:
+    port: "{{ jenkins_port }}"
+    host: "{{ jenkins_listen_address }}"
+    delay: 10
+    timeout: 60
+
+- name: Create Jenkins log directory (for Fail2Ban)
+  file:
+    path: /var/log/jenkins
+    state: directory
+    owner: jenkins
+    group: jenkins
+    mode: "0755"
+
+- name: Check if Jenkins initial admin password exists
+  stat:
+    path: /var/lib/jenkins/secrets/initialAdminPassword
+  register: jenkins_password_file
+
+- name: Read Jenkins initial admin password
+  slurp:
+    src: /var/lib/jenkins/secrets/initialAdminPassword
+  register: jenkins_initial_password
+  changed_when: false
+  when: jenkins_password_file.stat.exists
+
+- name: Display Jenkins initial admin password
+  debug:
+    msg: "Jenkins initial admin password: {{ jenkins_initial_password.content | b64decode | trim }}"
+  when: jenkins_password_file.stat.exists

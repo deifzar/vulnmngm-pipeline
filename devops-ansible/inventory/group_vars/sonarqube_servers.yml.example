@@ -1,0 +1,32 @@
+# SonarQube Server Configuration Example
+# Copy this file to sonarqube_servers.yml and fill in your actual values
+#
+# cp sonarqube_servers.yml.example sonarqube_servers.yml
+
+# SonarQube domain (used for Nginx reverse proxy and SSL)
+sonarqube_domain: "<SONARQUBE_FQDN>"    # e.g., sonarqube.example.com
+sonarqube_listen_address: "127.0.0.1"
+sonarqube_port: 9000
+
+# SonarQube version
+sonarqube_version: "10.3.0.82913"
+sonarqube_download_url: "https://binaries.sonarsource.com/Distribution/sonarqube/sonarqube-{{ sonarqube_version }}.zip"
+sonarqube_install_dir: "/opt/sonarqube"
+
+# System limits (recommended values for production)
+sonarqube_vm_max_map_count: 524288
+sonarqube_fs_file_max: 131072
+sonarqube_nofile_limit: 131072
+sonarqube_nproc_limit: 8192
+
+# Database configuration
+# For Azure PostgreSQL, use the privatelink hostname
+sonarqube_db_host: "<DATABASE_HOSTNAME>"    # e.g., psql-sonarqube.privatelink.postgres.database.azure.com
+sonarqube_db_port: 5432
+sonarqube_db_name: "sonarqube"
+sonarqube_db_username: "<DATABASE_USERNAME>"
+# Password is stored in vault - reference it like this:
+sonarqube_db_password: "{{ vault_sonarqube_db_password }}"
+
+# Logging
+sonarqube_log_level: "INFO"

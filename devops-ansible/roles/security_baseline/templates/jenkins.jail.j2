@@ -1,0 +1,8 @@
+[jenkins]
+enabled = true
+port = http,https
+filter = jenkins
+logpath = /var/log/jenkins/jenkins.log
+maxretry = {{ fail2ban_maxretry }}
+bantime = {{ fail2ban_bantime }}
+findtime = {{ fail2ban_findtime }}

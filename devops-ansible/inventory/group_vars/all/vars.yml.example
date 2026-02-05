@@ -1,0 +1,23 @@
+# Global Variables Example
+# Copy this file to vars.yml and fill in your actual values
+#
+# cp vars.yml.example vars.yml
+
+# SSH Configuration
+ssh_allowed_sources:
+  - "<YOUR_PUBLIC_IP>"           # Your office/home IP
+  - "<AZURE_VNET_CIDR>"          # e.g., 10.0.0.0/16
+
+# SSL/TLS Configuration
+letsencrypt_email: "<YOUR_EMAIL>"        # For Let's Encrypt notifications
+ssl_domain: "<YOUR_DOMAIN>"      # e.g., example.com
+enable_hsts: true
+hsts_max_age: 31536000
+
+# Fail2Ban defaults
+fail2ban_maxretry: 5
+fail2ban_bantime: 3600
+fail2ban_findtime: 600
+
+# Logging
+log_retention_days: 30

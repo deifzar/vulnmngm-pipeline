@@ -1,0 +1,170 @@
+---
+- name: Install SonarQube prerequisites
+  apt:
+    name:
+      - fontconfig
+      - openjdk-21-jre
+      - zip
+      - unzip
+    state: present
+
+- name: Configure system limits for SonarQube
+  sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: yes
+  loop:
+    - { name: "vm.max_map_count", value: "{{ sonarqube_vm_max_map_count }}" }
+    - { name: "fs.file-max", value: "{{ sonarqube_fs_file_max }}" }
+
+- name: Set ulimits for SonarQube user
+  pam_limits:
+    domain: sonarqube
+    limit_type: "-"
+    limit_item: "{{ item.limit }}"
+    value: "{{ item.value }}"
+  loop:
+    - { limit: "nofile", value: "{{ sonarqube_nofile_limit }}" }
+    - { limit: "nproc", value: "{{ sonarqube_nproc_limit }}" }
+
+- name: Create SonarQube system user
+  user:
+    name: sonarqube
+    system: yes
+    create_home: yes
+    home: /home/sonarqube
+    shell: /bin/bash
+    state: present
+
+- name: Check if SonarQube is already installed
+  stat:
+    path: "{{ sonarqube_install_dir }}/bin/linux-x86-64/sonar.sh"
+  register: sonarqube_installed
+
+- name: Download SonarQube
+  get_url:
+    url: "{{ sonarqube_download_url }}"
+    dest: "/tmp/sonarqube-{{ sonarqube_version }}.zip"
+    mode: "0644"
+  when: not sonarqube_installed.stat.exists
+
+- name: Extract SonarQube
+  unarchive:
+    src: "/tmp/sonarqube-{{ sonarqube_version }}.zip"
+    dest: /opt/
+    remote_src: yes
+    owner: sonarqube
+    group: sonarqube
+  when: not sonarqube_installed.stat.exists
+
+- name: Rename SonarQube directory
+  command: mv /opt/sonarqube-{{ sonarqube_version }} {{ sonarqube_install_dir }}
+  args:
+    creates: "{{ sonarqube_install_dir }}"
+  when: not sonarqube_installed.stat.exists
+
+- name: Set ownership on SonarQube directory
+  file:
+    path: "{{ sonarqube_install_dir }}"
+    owner: sonarqube
+    group: sonarqube
+    recurse: yes
+
+- name: Configure SonarQube properties
+  template:
+    src: sonar.properties.j2
+    dest: "{{ sonarqube_install_dir }}/conf/sonar.properties"
+    owner: sonarqube
+    group: sonarqube
+    mode: "0600"
+  notify: Restart SonarQube
+
+- name: Create SonarQube systemd service
+  template:
+    src: sonarqube.service.j2
+    dest: /etc/systemd/system/sonarqube.service
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart SonarQube
+
+- name: Clean temp directory
+  file:
+    path: "{{ sonarqube_install_dir }}/temp"
+    state: absent
+
+- name: Recreate temp directory
+  file:
+    path: "{{ sonarqube_install_dir }}/temp"
+    state: directory
+    owner: sonarqube
+    group: sonarqube
+    mode: "0755"
+
+- name: Flush handlers to ensure service is restarted
+  meta: flush_handlers
+
+- name: Ensure SonarQube service is running
+  service:
+    name: sonarqube
+    state: started
+    enabled: yes
+
+- name: Wait for SonarQube port to be available
+  wait_for:
+    port: "{{ sonarqube_port }}"
+    host: "{{ sonarqube_listen_address }}"
+    delay: 10
+    timeout: 600
+  register: sonarqube_port_wait
+  ignore_errors: yes
+
+- name: Check SonarQube logs if port wait failed
+  command: tail -100 {{ sonarqube_install_dir }}/logs/sonar.log
+  register: sonarqube_logs
+  when: sonarqube_port_wait is failed
+  changed_when: false
+
+- name: Display SonarQube logs on failure
+  debug:
+    var: sonarqube_logs.stdout_lines
+  when: sonarqube_port_wait is failed
+
+- name: Fail if SonarQube did not start
+  fail:
+    msg: "SonarQube failed to start. Check the logs above for details."
+  when: sonarqube_port_wait is failed
+
+- name: Wait for SonarQube API to be ready
+  uri:
+    url: "http://{{ sonarqube_listen_address }}:{{ sonarqube_port }}/api/system/status"
+    method: GET
+    return_content: yes
+    status_code: 200
+  register: sonarqube_status
+  until: sonarqube_status.json.status == "UP"
+  retries: 30
+  delay: 20
+  ignore_errors: yes
+
+- name: Display SonarQube status
+  debug:
+    msg: "SonarQube status: {{ sonarqube_status.json.status | default('UNKNOWN') }}"
+  when: sonarqube_status is not failed
+
+- name: Display SonarQube access information
+  debug:
+    msg: |
+      SonarQube is running on {{ sonarqube_listen_address }}:{{ sonarqube_port }}
+      Access via: https://{{ sonarqube_domain }}
+      Default credentials: admin / admin (change on first login)
+  when: sonarqube_status is not failed
+
+- name: Create SonarQube log directory (for Fail2Ban)
+  file:
+    path: /var/log/sonarqube
+    state: directory
+    owner: sonarqube
+    group: sonarqube
+    mode: "0755"

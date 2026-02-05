@@ -1,0 +1,45 @@
+---
+- name: Deploy SonarQube with Nginx reverse proxy
+  hosts: sonarqube_servers
+  become: yes
+
+  pre_tasks:
+    - name: Verify connection
+      ping:
+
+    - name: Display target host information
+      debug:
+        msg: "Deploying SonarQube to {{ inventory_hostname }} ({{ ansible_host }})"
+
+  roles:
+    - role: security_baseline
+      tags: ["security", "baseline"]
+
+    - role: sonarqube
+      tags: ["sonarqube", "app"]
+
+    - role: nginx_reverse_proxy
+      vars:
+        service_name: "sonarqube"
+        service_domain: "{{ sonarqube_domain }}"
+        backend_host: "{{ sonarqube_listen_address }}"
+        backend_port: "{{ sonarqube_port }}"
+        websocket_support: false
+        proxy_timeout: 90
+      tags: ["nginx", "proxy"]
+
+  post_tasks:
+    - name: Display completion message
+      debug:
+        msg: |
+          ================================================
+          SonarQube deployment completed successfully!
+          ================================================
+          Access SonarQube at: https://{{ sonarqube_domain }}
+
+          Default credentials:
+            Username: admin
+            Password: admin
+
+          IMPORTANT: Change the admin password on first login!
+          ================================================

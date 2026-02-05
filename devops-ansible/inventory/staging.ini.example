@@ -1,0 +1,28 @@
+# Staging Inventory Example
+# Copy this file to staging.ini and fill in your actual values
+#
+# cp staging.ini.example staging.ini
+
+[jenkins_servers]
+jenkins-staging ansible_host=<JENKINS_PUBLIC_IP> ansible_user=<SSH_USERNAME>
+
+[sonarqube_servers]
+sonarqube-staging ansible_host=<SONARQUBE_PUBLIC_IP> ansible_user=<SSH_USERNAME>
+
+[jenkins_servers:vars]
+# SSH configuration - path to your SSH private key
+ansible_ssh_private_key_file=<PATH_TO_SSH_PRIVATE_KEY>
+
+[sonarqube_servers:vars]
+# SSH configuration - path to your SSH private key
+ansible_ssh_private_key_file=<PATH_TO_SSH_PRIVATE_KEY>
+
+[devtools:children]
+jenkins_servers
+sonarqube_servers
+
+# Group variables
+[devtools:vars]
+ansible_python_interpreter=/usr/bin/python3
+# Environment
+env=staging

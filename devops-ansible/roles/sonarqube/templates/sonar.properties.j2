@@ -1,0 +1,19 @@
+### Database Configuration
+sonar.jdbc.username={{ sonarqube_db_username }}
+# Note: # characters must be escaped as \# in Java properties files
+sonar.jdbc.password={{ sonarqube_db_password | replace('#', '\\#') }}
+sonar.jdbc.url=jdbc:postgresql://{{ sonarqube_db_host }}:{{ sonarqube_db_port }}/{{ sonarqube_db_name }}?sslmode=require
+
+### Web Server Configuration
+sonar.web.host={{ sonarqube_listen_address }}
+sonar.web.port={{ sonarqube_port }}
+
+# Note: Do NOT set sonar.embeddedDatabase.port when using external database
+# SonarQube will automatically use PostgreSQL based on the JDBC URL above
+
+### Logging
+sonar.log.level={{ sonarqube_log_level }}
+sonar.path.logs={{ sonarqube_install_dir }}/logs
+
+### Elasticsearch
+sonar.search.javaOpts=-Xmx512m -Xms512m -XX:MaxDirectMemorySize=256m -XX:+HeapDumpOnOutOfMemoryError

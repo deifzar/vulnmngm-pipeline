@@ -1,0 +1,23 @@
+# Ansible Vault Example
+# This file shows the structure of secrets stored in the vault.
+#
+# To create your vault:
+#   1. Create password file:
+#      echo 'your-secure-vault-password' > .ansible_devops_vault_pass
+#      chmod 600 .ansible_devops_vault_pass
+#
+#   2. Create the encrypted vault:
+#      ansible-vault create inventory/group_vars/all/vault.yml
+#
+#   3. Add the following variables (replace with actual values):
+
+# Database passwords
+vault_sonarqube_db_password: "your-strong-database-password"
+
+# API tokens (if needed)
+# vault_jenkins_api_token: "your-jenkins-api-token"
+# vault_sonarqube_api_token: "your-sonarqube-api-token"
+
+# Other secrets
+# vault_smtp_password: "your-smtp-password"
+# vault_slack_webhook_url: "https://hooks.slack.com/services/xxx"

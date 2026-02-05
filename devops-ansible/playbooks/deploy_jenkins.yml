@@ -1,0 +1,49 @@
+---
+- name: Deploy Jenkins with Nginx reverse proxy
+  hosts: jenkins_servers
+  become: yes
+
+  pre_tasks:
+    - name: Verify connection
+      ping:
+
+    - name: Gather facts
+      setup:
+
+    - name: Display target host information
+      debug:
+        msg: "Deploying to {{ inventory_hostname }} ({{ ansible_host }})"
+
+  roles:
+    - role: security_baseline
+      tags: ["security", "baseline"]
+
+    - role: jenkins
+      tags: ["jenkins", "app"]
+
+    - role: nginx_reverse_proxy
+      vars:
+        service_name: "jenkins"
+        service_domain: "{{ jenkins_domain }}"
+        backend_host: "{{ jenkins_listen_address }}"
+        backend_port: "{{ jenkins_port }}"
+        websocket_support: false
+        proxy_timeout: 90
+      tags: ["nginx", "proxy"]
+
+  post_tasks:
+    - name: Display completion message
+      debug:
+        msg: |
+          ================================================
+          Jenkins deployment completed successfully!
+          ================================================
+          Access Jenkins at: https://{{ jenkins_domain }}
+
+          Initial admin password has been displayed above.
+
+          Next steps:
+          1. Complete Jenkins setup wizard
+          2. Configure Jenkins plugins
+          3. Set up Jenkins jobs/pipelines
+          ================================================
