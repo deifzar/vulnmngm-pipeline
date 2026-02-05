@@ -1,0 +1,113 @@
+---
+- name: Install Nginx
+  apt:
+    name: nginx
+    state: present
+
+- name: Install Certbot and Nginx plugin
+  apt:
+    name:
+      - certbot
+      - python3-certbot-nginx
+    state: present
+
+- name: Remove default Nginx site
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+
+- name: Ensure Nginx is running
+  service:
+    name: nginx
+    state: started
+    enabled: yes
+
+- name: Check if TLS certificate exists
+  stat:
+    path: "/etc/letsencrypt/live/{{ service_domain }}/fullchain.pem"
+  register: ssl_cert
+
+# --- INITIAL SETUP (no TLS cert yet) ---
+- name: Create HTTP-only config for initial cert issuance
+  template:
+    src: reverse_proxy.default.conf.j2
+    dest: /etc/nginx/sites-available/{{ service_name }}
+    mode: "0644"
+  when: not ssl_cert.stat.exists
+  notify: Reload Nginx
+
+- name: Enable site (initial setup)
+  file:
+    src: /etc/nginx/sites-available/{{ service_name }}
+    dest: /etc/nginx/sites-enabled/{{ service_name }}
+    state: link
+  when: not ssl_cert.stat.exists
+  notify: Reload Nginx
+
+# Flush handlers to reload nginx BEFORE certbot runs
+- name: Flush handlers to apply nginx config
+  meta: flush_handlers
+  when: not ssl_cert.stat.exists
+
+- name: Test Nginx configuration
+  command: nginx -t
+  register: nginx_test
+  changed_when: false
+
+- name: Display Nginx test results
+  debug:
+    var: nginx_test.stderr_lines
+  when: nginx_test.stderr_lines is defined
+
+- name: Obtain Let's Encrypt certificate
+  command: >
+    certbot --nginx
+    -d {{ service_domain }}
+    --non-interactive
+    --agree-tos
+    --email {{ letsencrypt_email }}
+  args:
+    creates: "/etc/letsencrypt/live/{{ service_domain }}/fullchain.pem"
+  notify: Reload Nginx
+
+# --- FULL TLS SETUP (cert exists) ---
+- name: Re-check if SSL certificate exists
+  stat:
+    path: "/etc/letsencrypt/live/{{ service_domain }}/fullchain.pem"
+  register: ssl_cert_final
+
+- name: Create full reverse proxy configuration with TLS
+  template:
+    src: reverse_proxy.conf.j2
+    dest: /etc/nginx/sites-available/{{ service_name }}
+    mode: "0644"
+  when: ssl_cert_final.stat.exists
+  notify: Reload Nginx
+
+- name: Enable site (full TLS)
+  file:
+    src: /etc/nginx/sites-available/{{ service_name }}
+    dest: /etc/nginx/sites-enabled/{{ service_name }}
+    state: link
+  when: ssl_cert_final.stat.exists
+  notify: Reload Nginx
+
+- name: Flush handlers to apply TLS config
+  meta: flush_handlers
+
+- name: Test final Nginx configuration
+  command: nginx -t
+  register: nginx_test_final
+  changed_when: false
+
+- name: Display final Nginx test results
+  debug:
+    var: nginx_test_final.stderr_lines
+  when: nginx_test_final.stderr_lines is defined
+
+- name: Set up Certbot auto-renewal
+  cron:
+    name: "Certbot auto-renewal"
+    minute: "0"
+    hour: "3"
+    job: "/usr/bin/certbot renew --quiet --post-hook 'systemctl reload nginx'"

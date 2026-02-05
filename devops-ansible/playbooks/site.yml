@@ -1,0 +1,8 @@
+---
+# Master playbook - Deploy all infrastructure
+
+- name: Deploy Jenkins
+  import_playbook: deploy_jenkins.yml
+
+- name: Deploy SonarQube
+  import_playbook: deploy_sonarqube.yml

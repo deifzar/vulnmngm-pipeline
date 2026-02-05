@@ -1,0 +1,14 @@
+# Jenkins Server Configuration Example
+# Copy this file to jenkins_servers.yml and fill in your actual values
+#
+# cp jenkins_servers.yml.example jenkins_servers.yml
+
+# Jenkins domain (used for Nginx reverse proxy and SSL)
+jenkins_domain: "<JENKINS_FQDN>"     # e.g., jenkins.example.com
+
+# Jenkins network binding
+jenkins_listen_address: "127.0.0.1"  # Bind to localhost (Nginx handles external traffic)
+jenkins_port: 8080
+
+# Java options (optional)
+# jenkins_java_opts: "-Xmx2g -Xms512m"

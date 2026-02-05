@@ -1,0 +1,110 @@
+---
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Upgrade all packages
+  apt:
+    upgrade: dist
+    autoremove: yes
+    autoclean: yes
+
+- name: Install security tools
+  apt:
+    name:
+      - ufw
+      - fail2ban
+      - unattended-upgrades
+    state: present
+
+- name: Configure automatic security updates
+  debconf:
+    name: unattended-upgrades
+    question: unattended-upgrades/enable_auto_updates
+    value: "true"
+    vtype: boolean
+
+- name: Enable unattended-upgrades
+  copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+      APT::Periodic::AutocleanInterval "7";
+    mode: "0644"
+
+- name: Set UFW default policies
+  ufw:
+    direction: "{{ item.direction }}"
+    policy: "{{ item.policy }}"
+  loop:
+    - { direction: "incoming", policy: "deny" }
+    - { direction: "outgoing", policy: "allow" }
+
+- name: Allow SSH from specific IPs only
+  ufw:
+    rule: allow
+    port: "22"
+    proto: tcp
+    from_ip: "{{ item }}"
+    comment: "SSH from {{ item }}"
+  loop: "{{ ssh_allowed_sources }}"
+
+- name: Allow HTTP traffic
+  ufw:
+    rule: allow
+    port: "80"
+    proto: tcp
+    comment: "HTTP for LetsEncrypt"
+
+- name: Allow HTTPS traffic
+  ufw:
+    rule: allow
+    port: "443"
+    proto: tcp
+    comment: "HTTPS traffic"
+
+- name: Enable UFW
+  ufw:
+    state: enabled
+
+# Jenkins Fail2Ban configuration
+- name: Create Fail2Ban Jenkins jail
+  template:
+    src: jenkins.jail.j2
+    dest: /etc/fail2ban/jail.d/jenkins.conf
+    mode: "0644"
+  notify: Restart Fail2Ban
+  when: "'jenkins_servers' in group_names"
+
+- name: Create Fail2Ban Jenkins filter
+  template:
+    src: jenkins.filter.j2
+    dest: /etc/fail2ban/filter.d/jenkins.conf
+    mode: "0644"
+  notify: Restart Fail2Ban
+  when: "'jenkins_servers' in group_names"
+
+# SonarQube Fail2Ban configuration
+- name: Create Fail2Ban SonarQube jail
+  template:
+    src: sonarqube.jail.j2
+    dest: /etc/fail2ban/jail.d/sonarqube.conf
+    mode: "0644"
+  notify: Restart Fail2Ban
+  when: "'sonarqube_servers' in group_names"
+
+- name: Create Fail2Ban SonarQube filter
+  template:
+    src: sonarqube.filter.j2
+    dest: /etc/fail2ban/filter.d/sonarqube.conf
+    mode: "0644"
+  notify: Restart Fail2Ban
+  when: "'sonarqube_servers' in group_names"
+
+- name: Ensure Fail2Ban is running
+  service:
+    name: fail2ban
+    state: started
+    enabled: yes

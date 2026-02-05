@@ -1,0 +1,28 @@
+# Production Inventory Example
+# Copy this file to production.ini and fill in your actual values
+#
+# cp production.ini.example production.ini
+
+[jenkins_servers]
+jenkins-prod ansible_host=<JENKINS_PUBLIC_IP> ansible_user=<SSH_USERNAME>
+
+[sonarqube_servers]
+sonarqube-prod ansible_host=<SONARQUBE_PUBLIC_IP> ansible_user=<SSH_USERNAME>
+
+[jenkins_servers:vars]
+# SSH configuration - path to your SSH private key
+ansible_ssh_private_key_file=<PATH_TO_SSH_PRIVATE_KEY>
+
+[sonarqube_servers:vars]
+# SSH configuration - path to your SSH private key
+ansible_ssh_private_key_file=<PATH_TO_SSH_PRIVATE_KEY>
+
+[devtools:children]
+jenkins_servers
+sonarqube_servers
+
+# Group variables
+[devtools:vars]
+ansible_python_interpreter=/usr/bin/python3
+# Environment
+env=production

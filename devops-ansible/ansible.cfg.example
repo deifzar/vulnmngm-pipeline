@@ -1,0 +1,38 @@
+# Ansible Configuration Example
+# Copy this file to ansible.cfg and adjust paths as needed
+#
+# cp ansible.cfg.example ansible.cfg
+
+[defaults]
+inventory = inventory/staging.ini
+host_key_checking = False
+retry_files_enabled = False
+roles_path = roles
+# private_key_file = <PATH_TO_DEFAULT_SSH_KEY>
+
+# Performance
+forks = 5
+gathering = smart
+fact_caching = jsonfile
+fact_caching_connection = /tmp/ansible_fact_cache
+fact_caching_timeout = 3600
+
+# SSH settings
+timeout = 30
+ssh_args = -o ControlMaster=auto -o ControlPersist=60s -o StrictHostKeyChecking=no
+
+# Vault - create this file with your vault password
+# echo 'your-vault-password' > .ansible_devops_vault_pass
+# chmod 600 .ansible_devops_vault_pass
+vault_password_file = .ansible_devops_vault_pass
+
+[privilege_escalation]
+become = True
+become_method = sudo
+become_user = root
+become_ask_pass = False
+
+[ssh_connection]
+pipelining = True
+host_key_checking = False
+StrictHostKeyChecking = no
