@@ -1,0 +1,37 @@
+---
+- name: Deploy Jenkins Agent with Nginx reverse proxy
+  hosts: jenkins_agents
+  become: yes
+
+  pre_tasks:
+    - name: Verify connection
+      ping:
+
+    - name: Gather facts
+      setup:
+
+    - name: Display target host information
+      debug:
+        msg: "Deploying to {{ inventory_hostname }} ({{ ansible_host }})"
+
+  roles:
+    - role: security_baseline
+      tags: ["security", "baseline"]
+
+    - role: jenkins_agent
+      tags: ["jenkins", "jenkins_agent"]
+
+  post_tasks:
+    - name: Display completion message
+      debug:
+        msg: |
+          ================================================
+          Jenkins Agent deployment completed successfully!
+          ================================================
+          Access Jenkins at: ssh://{{ inventory_hostname }}
+
+          Next steps:
+          1. 
+          2. 
+          3. 
+          ================================================

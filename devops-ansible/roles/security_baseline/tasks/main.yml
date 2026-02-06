@@ -42,7 +42,16 @@
     - { direction: "incoming", policy: "deny" }
     - { direction: "outgoing", policy: "allow" }
 
-- name: Allow SSH from specific IPs only
+- name: Allow SSH from subnet devops only
+  ufw:
+    rule: allow
+    port: "22"
+    proto: tcp
+    from_ip: "{{ azure_subnet_devsecops_ip_range }}"
+    comment: "SSH from {{ azure_subnet_devsecops_ip_range }}"
+  when: "'jenkins_agents' in group_names"
+
+- name: Allow SSH from specific external IPs only
   ufw:
     rule: allow
     port: "22"
@@ -50,6 +59,16 @@
     from_ip: "{{ item }}"
     comment: "SSH from {{ item }}"
   loop: "{{ ssh_allowed_sources }}"
+  when: "'jenkins_controllers' or 'sonarqube_servers' in group_names"
+
+- name: Allow Jenkins JNLP agent
+  ufw:
+    rule: allow
+    port: "50000"
+    proto: tcp
+    from_ip: "{{ azure_subnet_devsecops_ip_range }}"
+    comment: "Jenkins JNLP agent TCP from {{ azure_subnet_devsecops_ip_range }}"
+  when: "'jenkins_controllers' in group_names"
 
 - name: Allow HTTP traffic
   ufw:
@@ -57,6 +76,7 @@
     port: "80"
     proto: tcp
     comment: "HTTP for LetsEncrypt"
+  when: "'jenkins_controllers' or 'sonarqube_servers' in group_names"
 
 - name: Allow HTTPS traffic
   ufw:
@@ -64,6 +84,7 @@
     port: "443"
     proto: tcp
     comment: "HTTPS traffic"
+  when: "'jenkins_controllers' or 'sonarqube_servers' in group_names"
 
 - name: Enable UFW
   ufw:
@@ -76,7 +97,7 @@
     dest: /etc/fail2ban/jail.d/jenkins.conf
     mode: "0644"
   notify: Restart Fail2Ban
-  when: "'jenkins_servers' in group_names"
+  when: "'jenkins_controllers' in group_names"
 
 - name: Create Fail2Ban Jenkins filter
   template:
@@ -84,7 +105,7 @@
     dest: /etc/fail2ban/filter.d/jenkins.conf
     mode: "0644"
   notify: Restart Fail2Ban
-  when: "'jenkins_servers' in group_names"
+  when: "'jenkins_controllers' in group_names"
 
 # SonarQube Fail2Ban configuration
 - name: Create Fail2Ban SonarQube jail

@@ -10,10 +10,15 @@ inventory/production.ini
 # Actual configuration (contains local paths)
 ansible.cfg
 
+# Actual host_vars with sensitive data
+inventory/host_vars/*
+!inventory/host_vars/jenkins-agent-staging.yml.example
+
 # Actual group_vars with sensitive data
 inventory/group_vars/all/vars.yml
 inventory/group_vars/all/vault.yml
-inventory/group_vars/jenkins_servers.yml
+inventory/group_vars/jenkins_controllers.yml
+inventory/group_vars/jenkins_agents.yml
 inventory/group_vars/sonarqube_servers.yml
 
 # Ansible retry files

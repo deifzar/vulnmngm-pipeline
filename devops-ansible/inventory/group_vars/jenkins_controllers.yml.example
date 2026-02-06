@@ -1,7 +1,7 @@
 # Jenkins Server Configuration Example
-# Copy this file to jenkins_servers.yml and fill in your actual values
+# Copy this file to jenkins_controllers.yml and fill in your actual values
 #
-# cp jenkins_servers.yml.example jenkins_servers.yml
+# cp jenkins_controllers.yml.example jenkins_controllers.yml
 
 # Jenkins domain (used for Nginx reverse proxy and SSL)
 jenkins_domain: "<JENKINS_FQDN>"     # e.g., jenkins.example.com

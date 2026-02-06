@@ -1,0 +1,7 @@
+# Jenkins Agent Configuration Example
+# Copy this file to jenkins_agents.yml and fill in your actual values
+#
+# cp jenkins_agents.yml.example jenkins_agents.yml
+
+jenkins_fqdn: "<FQDN_jenkins_node>"
+jenkins_internal_address: "<INTERNAL_IP_JENKINS_NODE>"
