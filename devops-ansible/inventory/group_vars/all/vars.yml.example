@@ -8,6 +8,10 @@ ssh_allowed_sources:
   - "<YOUR_PUBLIC_IP>"           # Your office/home IP
   - "<AZURE_VNET_CIDR>"          # e.g., 10.0.0.0/16
 
+# Azure
+azure_private_ip_range: "10.0.0.0/16"
+azure_subnet_devsecops_ip_range: "10.0.1.0/24"
+
 # SSL/TLS Configuration
 letsencrypt_email: "<YOUR_EMAIL>"        # For Let's Encrypt notifications
 ssl_domain: "<YOUR_DOMAIN>"      # e.g., example.com

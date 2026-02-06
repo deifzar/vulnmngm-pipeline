@@ -1,8 +1,14 @@
 ---
 # Master playbook - Deploy all infrastructure
 
-- name: Deploy Jenkins
-  import_playbook: deploy_jenkins.yml
+- name: Deploy Jenkins Constroller
+  import_playbook: deploy_jenkins_controller.yml
+  tags: [jenkins_controller, jenkins]
+
+- name: Deploy Jenkins Agent
+  import_playbook: deploy_jenkins_agent.yml
+  tags: [jenkins_agent, jenkins]
 
 - name: Deploy SonarQube
   import_playbook: deploy_sonarqube.yml
+  tags: [sonarqube]

@@ -43,38 +43,43 @@ This DevSecOps infrastructure is designed to support the [CPTM8 project](https:/
                                     |   Azure Cloud    |
                                     +--------+---------+
                                              |
-                    +------------------------+------------------------+
-                    |                        |                        |
-           +--------v--------+      +--------v--------+      +--------v--------+
-           |    Jenkins VM   |      |  SonarQube VM   |      | Azure Bastion   |
-           |   (CI/CD)       |      |   (SAST)        |      | (Secure Access) |
-           +--------+--------+      +--------+--------+      +-----------------+
-                    |                        |
-                    |                +-------v-------+
-                    |                | PostgreSQL    |
-                    |                | Flexible DB   |
-                    |                +---------------+
-                    |
-           +--------v--------+
-           |  Nginx Reverse  |
-           |  Proxy + SSL    |
-           +-----------------+
+          +---------------+------------------+------------------+---------------+
+          |               |                  |                  |               |
+ +--------v--------+  +---v----+     +-------v-------+  +-------v-------+  +----v-----------+
+ |    Jenkins      |  |Jenkins |     |  SonarQube VM |  | PostgreSQL    |  | Azure Bastion  |
+ |   Controller    |  | Agent  |     |   (SAST)      |  | Flexible DB   |  | (Secure Access)|
+ +--------+--------+  +---+----+     +---------------+  +---------------+  +----------------+
+          |               |
+          |     +---------+
+          |     |
+ +--------v-----v----+
+ |   Nginx Reverse   |
+ |   Proxy + SSL     |
+ |  (WebSocket)      |
+ +-------------------+
 ```
+
+**Network Design:**
+- Jenkins Controller: Public IP with Nginx reverse proxy (HTTPS + WebSocket)
+- Jenkins Agents: Private subnet only, connect to controller via internal network
+- SSH access to agents: ProxyCommand through Jenkins Controller
 
 ## Current Tools
 
 | Tool | Purpose | Status |
 |------|---------|--------|
-| Jenkins | CI/CD automation server | Deployed |
+| Jenkins Controller | CI/CD automation server | Deployed |
+| Jenkins Agent | Build execution with Docker | Deployed |
 | SonarQube | Static Application Security Testing (SAST) | Deployed |
-| Nginx | Reverse proxy with Let's Encrypt SSL | Deployed |
+| Trivy | Container vulnerability scanning | Deployed (on agents) |
+| Docker | Container runtime on agents | Deployed |
+| Nginx | Reverse proxy with SSL + WebSocket | Deployed |
 | PostgreSQL | Database backend for SonarQube | Deployed |
 
 ## Planned Tools
 
 | Tool | Purpose | Status |
 |------|---------|--------|
-| Trivy | Container vulnerability scanning | Planned |
 | Artifactory | Artifact repository management | Planned |
 | Harbor | Container registry with security scanning | Planned |
 
@@ -105,12 +110,22 @@ VulnMngm-Pipeline/
 │               └── security/       # Security Groups
 │
 ├── devops-ansible/                 # Ansible configuration management
-│   ├── inventory/                  # Host inventories and variables
-│   ├── playbooks/                  # Deployment playbooks
+│   ├── inventory/
+│   │   ├── staging.ini             # Host inventory with ProxyCommand for agents
+│   │   └── group_vars/
+│   │       ├── jenkins_controllers.yml
+│   │       ├── jenkins_agents.yml  # Agent secrets (vault-encrypted)
+│   │       └── sonarqube_servers.yml
+│   ├── playbooks/
+│   │   ├── site.yml                # Master playbook with tags
+│   │   ├── deploy_jenkins_controller.yml
+│   │   ├── deploy_jenkins_agent.yml
+│   │   └── deploy_sonarqube.yml
 │   └── roles/
-│       ├── jenkins/                # Jenkins installation
+│       ├── jenkins/                # Jenkins Controller installation
+│       ├── jenkins_agent/          # Agent with Docker, Trivy, systemd service
 │       ├── sonarqube/              # SonarQube setup
-│       ├── nginx_reverse_proxy/    # SSL termination
+│       ├── nginx_reverse_proxy/    # SSL + WebSocket proxy
 │       └── security_baseline/      # OS hardening, fail2ban
 │
 └── README.md
@@ -173,6 +188,14 @@ cp ansible.cfg.example ansible.cfg
 
 # Deploy all services
 ansible-playbook playbooks/site.yml
+
+# Deploy specific components using tags
+ansible-playbook playbooks/site.yml --tags jenkins_controller
+ansible-playbook playbooks/site.yml --tags jenkins_agent
+ansible-playbook playbooks/site.yml --tags sonarqube
+
+# Deploy all Jenkins components (controller + agents)
+ansible-playbook playbooks/site.yml --tags jenkins
 ```
 
 ## Documentation
@@ -187,7 +210,8 @@ ansible-playbook playbooks/site.yml
 - [ ] AWS KMS for encryption key management
 
 ### Security Tools
-- [ ] Trivy integration for container scanning in Jenkins pipelines
+- [x] Trivy installed on Jenkins agents for container scanning
+- [ ] Trivy integration in Jenkins pipelines
 - [ ] Artifactory deployment for artifact management
 - [ ] Harbor registry with Trivy scanner integration
 

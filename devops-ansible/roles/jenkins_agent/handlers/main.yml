@@ -1,0 +1,22 @@
+---
+- name: Reload systemd
+  systemd:
+    daemon_reload: yes
+
+- name: Start Docker
+  service:
+    name: docker
+    state: started
+    enabled: yes
+
+- name: Restart Docker
+  service:
+    name: docker
+    state: restarted
+
+- name: Restart Jenkins Agent
+  become: true
+  systemd:
+    name: jenkins-agent
+    state: restarted
+    enabled: yes

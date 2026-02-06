@@ -3,13 +3,21 @@
 #
 # cp staging.ini.example staging.ini
 
-[jenkins_servers]
-jenkins-staging ansible_host=<JENKINS_PUBLIC_IP> ansible_user=<SSH_USERNAME>
+[jenkins_controllers]
+jenkins-controller-stagin ansible_host=<JENKINS_PUBLIC_IP> ansible_user=<SSH_USERNAME>
+
+[jenkins_agents]
+jenkins-agent-staging ansible_host=<JENKINS_PRIVATE_AGENT> ansible_user=<SSH_USERNAME> ansible_ssh_common_args='-o ForwardAgent=yes -o ProxyCommand="ssh -W %h:%p -i <PRIVATE_KEY> <SSH_USERNAME_NODE>@<JENKINS_NODE_FQDN>"'
+jenkins-agent-staging-2 ansible_host=<JENKINS_PRIVATE_AGENT_2> ansible_user=<SSH_USERNAME> ansible_ssh_common_args='-o ForwardAgent=yes -o ProxyCommand="ssh -W %h:%p -i <PRIVATE_KEY> <SSH_USERNAME_NODE>@<JENKINS_NODE_FQDN>"'
 
 [sonarqube_servers]
 sonarqube-staging ansible_host=<SONARQUBE_PUBLIC_IP> ansible_user=<SSH_USERNAME>
 
-[jenkins_servers:vars]
+[jenkins_controllers:vars]
+# SSH configuration - path to your SSH private key
+ansible_ssh_private_key_file=<PATH_TO_SSH_PRIVATE_KEY>
+
+[jenkins_agents:vars]
 # SSH configuration - path to your SSH private key
 ansible_ssh_private_key_file=<PATH_TO_SSH_PRIVATE_KEY>
 
@@ -18,7 +26,8 @@ ansible_ssh_private_key_file=<PATH_TO_SSH_PRIVATE_KEY>
 ansible_ssh_private_key_file=<PATH_TO_SSH_PRIVATE_KEY>
 
 [devtools:children]
-jenkins_servers
+jenkins_controllers
+jenkins_agents
 sonarqube_servers
 
 # Group variables

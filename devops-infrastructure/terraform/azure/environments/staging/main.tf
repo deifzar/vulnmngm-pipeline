@@ -106,35 +106,35 @@ module "security" {
 
   resource_group_name = azurerm_resource_group.devsecops.name
   location            = azurerm_resource_group.devsecops.location
-  nsg_name            = "nsg-devsecops-${var.environment}"
+  nsg_name            = "nsg-devsecops-with-web-${var.environment}"
 
   security_rules = merge(
-    # SSH from specific IP
+    # TCP 50000 from subnet-devsecops
     {
-      for idx, ip in var.allowed_ssh_source_ips : "AllowSSH-${idx}" => {
-        priority                   = 900 + idx
+      "AllowDevSecOpsInbound" = {
+        priority                   = 700
         direction                  = "Inbound"
         access                     = "Allow"
         protocol                   = "Tcp"
         source_port_range          = "*"
-        destination_port_range     = "22"
-        source_address_prefix      = ip
+        destination_port_range     = "50000"
+        source_address_prefix      = module.networking.subnet_address_prefixes["subnet-devsecops"]
         destination_address_prefix = "*"
-        description                = "Allow SSH from authorized IP"
+        description                = "Allow TCP connections from Subnet DevSecOps"
       }
     },
-    # HTTPS from multiple IPs
+    # HTTPS from devops subnet
     {
-      for idx, ip in var.allowed_https_source_ips : "AllowHTTPS-${idx}" => {
-        priority                   = 1000 + idx
+      "AllowHTTPSDevSecOps" = {
+        priority                   = 750
         direction                  = "Inbound"
         access                     = "Allow"
         protocol                   = "Tcp"
         source_port_range          = "*"
         destination_port_range     = "443"
-        source_address_prefix      = ip
+        source_address_prefix      = module.networking.subnet_address_prefixes["subnet-devsecops"]
         destination_address_prefix = "*"
-        description                = "Allow HTTPS from authorized IP"
+        description                = "Allow HTTPS from devsecops subnet"
       }
     },
     # Bastion access (conditional)
@@ -151,6 +151,34 @@ module "security" {
         description                = "Allow SSH from Azure Bastion"
       }
     } : {},
+    # SSH from specific IP
+    {
+      for idx, ip in var.allowed_ssh_source_ips : "AllowSSH-${idx}" => {
+        priority                   = 900 + idx
+        direction                  = "Inbound"
+        access                     = "Allow"
+        protocol                   = "Tcp"
+        source_port_range          = "*"
+        destination_port_range     = "22"
+        source_address_prefix      = ip
+        destination_address_prefix = "*"
+        description                = "Allow SSH from authorized IP"
+      }
+    },
+    # HTTPS from specific IP
+    {
+      for idx, ip in var.allowed_https_source_ips : "AllowHTTPS-${idx}" => {
+        priority                   = 1000 + idx
+        direction                  = "Inbound"
+        access                     = "Allow"
+        protocol                   = "Tcp"
+        source_port_range          = "*"
+        destination_port_range     = "443"
+        source_address_prefix      = ip
+        destination_address_prefix = "*"
+        description                = "Allow HTTPS from authorized IP"
+      }
+    },
     # Allow HTTP 80 all
     {
       "AllowHTTPAll" = {
@@ -165,6 +193,62 @@ module "security" {
         description                = "Allow HTTP for all. Reason: let's encrypt"
       }
     },
+    # Explicit deny all
+    {
+      "DenyAllInbound" = {
+        priority                   = 4096
+        direction                  = "Inbound"
+        access                     = "Deny"
+        protocol                   = "*"
+        source_port_range          = "*"
+        destination_port_range     = "*"
+        source_address_prefix      = "*"
+        destination_address_prefix = "*"
+        description                = "Deny all other inbound traffic"
+      }
+    }
+  )
+
+  tags = var.tags
+}
+
+# Security Module (NSG)
+module "security_jenkins_agent" {
+  source = "../../modules/security"
+
+  resource_group_name = azurerm_resource_group.devsecops.name
+  location            = azurerm_resource_group.devsecops.location
+  nsg_name            = "nsg-devsecops-jenkins-agent-${var.environment}"
+
+  security_rules = merge(
+    # Jenkins Node access
+    {
+      "AllowDevSecOpsInbound" = {
+        priority                   = 700
+        direction                  = "Inbound"
+        access                     = "Allow"
+        protocol                   = "Tcp"
+        source_port_range          = "*"
+        destination_port_range     = "22"
+        source_address_prefix      = module.networking.subnet_address_prefixes["subnet-devsecops"]
+        destination_address_prefix = "*"
+        description                = "Allow SSH from Subnet DevSecOps"
+      }
+    },
+    # Bastion access (conditional)
+    var.enable_bastion ? {
+      "AllowBastionInbound" = {
+        priority                   = 800
+        direction                  = "Inbound"
+        access                     = "Allow"
+        protocol                   = "Tcp"
+        source_port_range          = "*"
+        destination_port_range     = "22"
+        source_address_prefix      = module.networking.subnet_address_prefixes["AzureBastionSubnet"]
+        destination_address_prefix = "*"
+        description                = "Allow SSH from Azure Bastion"
+      }
+    } : {},
     # Explicit deny all
     {
       "DenyAllInbound" = {
@@ -199,20 +283,20 @@ module "bastion" {
   tags = var.tags
 }
 
-# Jenkins VM
-module "jenkins_vm" {
+# Jenkins Built-in Node VM
+module "jenkins_node_vm" {
   source = "../../modules/compute"
 
   resource_group_name    = azurerm_resource_group.devsecops.name
   location               = azurerm_resource_group.devsecops.location
-  vm_name                = "vm-jenkins-${var.environment}"
+  vm_name                = "vm-jenkins-node-${var.environment}"
   vm_size                = "Standard_D2s_v3"
   admin_username         = "azureadmin"
   ssh_public_key         = file(var.ssh_public_key_path)
   subnet_id              = module.networking.subnet_ids["subnet-devsecops"]
   nsg_id                 = module.security.nsg_id
   create_public_ip       = true
-  public_ip_dns_name     = "jenkins-cptm8net"
+  public_ip_dns_name     = "jenkins-node-cptm8net"
   os_disk_size_gb        = 50
   os_disk_storage_type   = "Premium_LRS"
   enable_disk_encryption = true
@@ -220,7 +304,34 @@ module "jenkins_vm" {
   key_vault_name         = azurerm_key_vault.disk_encryption.name
 
   tags = merge(var.tags, {
-    Service = "Jenkins"
+    Service = "Jenkins Built-in Node"
+    Role    = "CI/CD"
+  })
+
+  depends_on = [azurerm_key_vault_access_policy.current_user]
+}
+
+# Jenkins Agent VM
+module "jenkins_agent_vm" {
+  source = "../../modules/compute"
+
+  resource_group_name    = azurerm_resource_group.devsecops.name
+  location               = azurerm_resource_group.devsecops.location
+  vm_name                = "vm-jenkins-agent-${var.environment}"
+  vm_size                = "Standard_D2s_v3"
+  admin_username         = "azureadmin"
+  ssh_public_key         = file(var.ssh_public_key_path)
+  subnet_id              = module.networking.subnet_ids["subnet-devsecops"]
+  nsg_id                 = module.security_jenkins_agent.nsg_id
+  create_public_ip       = false
+  os_disk_size_gb        = 50
+  os_disk_storage_type   = "Premium_LRS"
+  enable_disk_encryption = true
+  key_vault_id           = azurerm_key_vault.disk_encryption.id
+  key_vault_name         = azurerm_key_vault.disk_encryption.name
+
+  tags = merge(var.tags, {
+    Service = "Jenkins Agent"
     Role    = "CI/CD"
   })
 
@@ -229,49 +340,49 @@ module "jenkins_vm" {
 
 # SonarQube VM
 
-module "sonarqube_vm" {
-  source = "../../modules/compute"
+# module "sonarqube_vm" {
+#   source = "../../modules/compute"
 
-  resource_group_name    = azurerm_resource_group.devsecops.name
-  location               = azurerm_resource_group.devsecops.location
-  vm_name                = "vm-sonarqube-${var.environment}"
-  vm_size                = "Standard_D2s_v3"
-  admin_username         = "azureadmin"
-  ssh_public_key         = file(var.ssh_public_key_path)
-  subnet_id              = module.networking.subnet_ids["subnet-devsecops"]
-  nsg_id                 = module.security.nsg_id
-  create_public_ip       = true
-  public_ip_dns_name     = "sonarqube-cptm8net"
-  os_disk_size_gb        = 100
-  os_disk_storage_type   = "Premium_LRS"
-  enable_disk_encryption = true
-  key_vault_id           = azurerm_key_vault.disk_encryption.id
-  key_vault_name         = azurerm_key_vault.disk_encryption.name
+#   resource_group_name    = azurerm_resource_group.devsecops.name
+#   location               = azurerm_resource_group.devsecops.location
+#   vm_name                = "vm-sonarqube-${var.environment}"
+#   vm_size                = "Standard_D2s_v3"
+#   admin_username         = "azureadmin"
+#   ssh_public_key         = file(var.ssh_public_key_path)
+#   subnet_id              = module.networking.subnet_ids["subnet-devsecops"]
+#   nsg_id                 = module.security.nsg_id
+#   create_public_ip       = true
+#   public_ip_dns_name     = "sonarqube-cptm8net"
+#   os_disk_size_gb        = 100
+#   os_disk_storage_type   = "Premium_LRS"
+#   enable_disk_encryption = true
+#   key_vault_id           = azurerm_key_vault.disk_encryption.id
+#   key_vault_name         = azurerm_key_vault.disk_encryption.name
 
-  tags = merge(var.tags, {
-    Service = "SonarQube"
-    Role    = "SAST"
-  })
+#   tags = merge(var.tags, {
+#     Service = "SonarQube"
+#     Role    = "SAST"
+#   })
 
-  depends_on = [azurerm_key_vault_access_policy.current_user]
-}
+#   depends_on = [azurerm_key_vault_access_policy.current_user]
+# }
 
-# PostgreSQL for SonarQube
+# # PostgreSQL for SonarQube
 
-module "postgresql_vm" {
-  source = "../../modules/postgresql_flexible"
+# module "postgresql_vm" {
+#   source = "../../modules/postgresql_flexible"
 
-  resource_group_name = azurerm_resource_group.devsecops.name
-  location            = azurerm_resource_group.devsecops.location
-  vm_name             = "psql-sonarqube-${var.environment}"
-  vnet_id             = module.networking.vnet_id
-  subnet_id           = module.networking.subnet_ids["subnet-postgresql"]
+#   resource_group_name = azurerm_resource_group.devsecops.name
+#   location            = azurerm_resource_group.devsecops.location
+#   vm_name             = "psql-sonarqube-${var.environment}"
+#   vnet_id             = module.networking.vnet_id
+#   subnet_id           = module.networking.subnet_ids["subnet-postgresql"]
 
-  postgresql_admin_username = "sqadmin"
-  postgresql_admin_password = var.postgresql_admin_password
+#   postgresql_admin_username = "sqadmin"
+#   postgresql_admin_password = var.postgresql_admin_password
 
-  tags = merge(var.tags, {
-    Service = "Postgresql-sonarqube"
-    Role    = "SAST Data"
-  })
-}
+#   tags = merge(var.tags, {
+#     Service = "Postgresql-sonarqube"
+#     Role    = "SAST Data"
+#   })
+# }
