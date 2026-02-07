@@ -6,7 +6,7 @@ After=network-online.target
 [Service]
 User=jenkins
 WorkingDirectory=/home/jenkins
-ExecStart=/usr/bin/java -jar /home/jenkins/agent.jar \
+ExecStart=/usr/bin/java -Djava.io.tmpdir=/home/jenkins/tmp -jar /home/jenkins/agent.jar \
     -url https://{{ jenkins_controller_fqdn }}/ \
     -secret {{ jenkins_controller_secret }} \
     -name {{ jenkins_agent_name | default(inventory_hostname) }} \
