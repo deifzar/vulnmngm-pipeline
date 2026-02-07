@@ -92,6 +92,13 @@
         home: /home/jenkins
         shell: /bin/bash
         state: present
+    - name: Create Jenkins tmp
+      file:
+        path: /home/jenkins/tmp
+        state: directory
+        owner: jenkins
+        group: jenkins
+        mode: "0755"
 
 - name: Add Jenkins controller to /etc/hosts (use private IP)
   lineinfile:
