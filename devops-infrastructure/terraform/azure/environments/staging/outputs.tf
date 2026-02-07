@@ -35,15 +35,15 @@ output "jenkins_agent_vm_details" {
 }
 
 # SonarQube VM details
-# output "sonarqube_vm_details" {
-#   description = "SonarQube VM connection details"
-#   value = {
-#     vm_name    = module.sonarqube_vm.vm_name
-#     private_ip = module.sonarqube_vm.private_ip_address
-#     public_ip  = module.sonarqube_vm.public_ip_address
-#     fqdn       = module.sonarqube_vm.public_ip_fqdn
-#   }
-# }
+output "sonarqube_vm_details" {
+  description = "SonarQube VM connection details"
+  value = {
+    vm_name    = module.sonarqube_vm.vm_name
+    private_ip = module.sonarqube_vm.private_ip_address
+    public_ip  = module.sonarqube_vm.public_ip_address
+    fqdn       = module.sonarqube_vm.public_ip_fqdn
+  }
+}
 
 output "key_vault_name" {
   description = "Name of the Key Vault"
@@ -64,10 +64,10 @@ output "ansible_inventory" {
       ansible_user = "azureadmin"
       private_ip   = module.jenkins_agent_vm.private_ip_address
     }
-    # sonarqube = {
-    #   ansible_host = module.sonarqube_vm.public_ip_address
-    #   ansible_user = "azureadmin"
-    #   private_ip   = module.sonarqube_vm.private_ip_address
-    # }
+    sonarqube = {
+      ansible_host = module.sonarqube_vm.public_ip_address
+      ansible_user = "azureadmin"
+      private_ip   = module.sonarqube_vm.private_ip_address
+    }
   }
 }
