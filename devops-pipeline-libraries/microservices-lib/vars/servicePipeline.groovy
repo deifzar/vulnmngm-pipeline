@@ -37,7 +37,7 @@ def call(Closure configClosure) {
         }
       }
 
-      stage('Build') {
+      stage('Build Go binary') {
         // Behind the scenes, Jenkins does:
         // docker run \
         // -v /home/jenkins/workspace/job-name:/home/jenkins/workspace/job-name \
@@ -48,6 +48,7 @@ def call(Closure configClosure) {
           docker {
             image config.buildImage
             reuseNode true  // Use same workspace. Important! Otherwise, files would not be shared
+            args '-e GOCACHE=/tmp/go-cache -e GOPATH=${WORKSPACE}/.go' // Point Go to write inside the workspace where we have permissions
           }
         }
         steps {
@@ -63,11 +64,12 @@ def call(Closure configClosure) {
         }
       }
 
-      stage('Test') {
+      stage('Test Go Binary') {
         agent {
           docker {
             image config.buildImage
             reuseNode true
+            args '-e GOCACHE=/tmp/go-cache -e GOPATH=${WORKSPACE}/.go'
           }
         }
         steps {
