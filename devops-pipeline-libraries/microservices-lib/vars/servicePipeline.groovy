@@ -191,7 +191,7 @@ def call(Closure configClosure) {
                   
                   trivy config \\
                     --ignorefile .trivyignore \\
-                    --exit-code 1 \\
+                    --exit-code 1 ${skipDirsArg} ${skipFilesArg}\\
                     --severity ${config.trivySeverity} \\
                     --cache-dir /var/trivy-cache \\
                     --format json \\
