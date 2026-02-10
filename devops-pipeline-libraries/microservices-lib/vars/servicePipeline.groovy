@@ -222,8 +222,8 @@ def call(Closure configClosure) {
                     --head ${branchName}
 
                   # Enable auto-merge (squash)
-                  gh pr merge --auto --squash ${branchName}
-                  echo "PR created and auto-merge enabled"
+                  # gh pr merge --auto --squash ${branchName}
+                  # echo "PR created and auto-merge enabled"
                 fi
 
                 # Cleanup
