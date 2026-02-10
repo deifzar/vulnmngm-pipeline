@@ -7,6 +7,7 @@ def call(Closure configClosure) {
     runCodeScan       : false,
     runImageScan      : true,   // Trivy image scan (enabled by default)
     trivySeverity     : 'HIGH,CRITICAL',
+    trivySkipFiles    : [],     // List of files to skip in Trivy scan
     deploy            : false,
     environments      : ['dev'],
     buildImage        : 'golang:1.23',
@@ -105,9 +106,11 @@ def call(Closure configClosure) {
           script {
             if (config.runImageScan) {
               def imageTag = "${config.imageRegistry}/${config.serviceName}:${env.BUILD_NUMBER}"
+              def skipFilesArg = config.trivySkipFiles ? "--skip-files ${config.trivySkipFiles.join(',')}" : ""
+
               sh """
                 echo "Scanning Docker image with Trivy: ${imageTag}"
-                trivy image --exit-code 1 --severity ${config.trivySeverity} ${imageTag}
+                trivy image --exit-code 1 ${skipFilesArg} --severity ${config.trivySeverity} ${imageTag}
               """
             } else {
               echo "Trivy scan disabled!"
