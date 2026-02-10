@@ -7,7 +7,7 @@ def call(Closure configClosure) {
     runSASTScan         : false,
     runTrivySourceScan  : false,
     runTrivyImageScan   : true,   // Trivy image scan (enabled by default)
-    runTrivyIaCScan     : true,
+    runTrivyIaCScan     : false,
     trivySeverity       : 'HIGH,CRITICAL',
     trivySkipDirs       : [],     // List of directories to skip in Trivy scan
     trivySkipFiles      : [],     // List of files to skip in Trivy scan
@@ -152,7 +152,7 @@ def call(Closure configClosure) {
               script {
                 def skipDirsArg = config.trivySkipDirs ? "--skip-dirs ${config.trivySkipDirs.join(',')}" : ""
                 def skipFilesArg = config.trivySkipFiles ? "--skip-files ${config.trivySkipFiles.join(',')}" : ""
-                  
+          
                 sh """
                   
                   trivy image \\
@@ -184,8 +184,11 @@ def call(Closure configClosure) {
             steps {
               echo "Scanning Misconfig IaC - Dockerfile:"
               script {
+                def skipDirsArg = config.trivySkipDirs ? "--skip-dirs ${config.trivySkipDirs.join(',')}" : ""
+                def skipFilesArg = config.trivySkipFiles ? "--skip-files ${config.trivySkipFiles.join(',')}" : ""
+          
                 sh """
-                    
+                  
                   trivy config \\
                     --ignorefile .trivyignore \\
                     --exit-code 1 \\
