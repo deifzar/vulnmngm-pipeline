@@ -16,7 +16,7 @@ def call(Closure configClosure) {
     // Binary publishing config
     publishBinary     : true,
     composeStackRepo  : 'https://github.com/deifzar/cptm8-compose-stack.git',
-    gitCredentialsId  : 'github-credentials'  // Jenkins credentials ID
+    gitCredentialsId  : null  // Jenkins credentials ID
   ]
 
   configClosure.resolveStrategy = Closure.DELEGATE_FIRST
