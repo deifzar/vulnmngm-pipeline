@@ -115,20 +115,24 @@ def call(Closure configClosure) {
       }
 
       // Run Docker container based on First image
-      stage ("Run container and copy ${config.serviceName} binary out") {
+      stage ("Run container and copy binary out") {
         steps {
+          echo "Working with ${config.serviceName}"
           script {
             def imageTag = "${config.imageRegistry}/${config.serviceName}:${env.BUILD_NUMBER}"
             sh """
               echo "Extracting binary from image: ${imageTag}"
 
-              container_id = \$(docker create ${imageTag})
+              container_id=\$(docker create ${imageTag})
               echo "Created container: \$container_id"
 
               # Copy binary out
               mkdir -p ./bin
               docker cp "\$container_id:/usr/local/bin/${config.serviceName}" "./bin"
               echo "Copied binary to ./bin"
+
+              # Check bin directory content
+              ls -lha bin
 
               # Cleanup
               docker rm \$container_id
@@ -142,7 +146,7 @@ def call(Closure configClosure) {
       stage('SAST') {
         steps {
           script {
-            if (config.runScan) {
+            if (config.runCodeScan) {
               dependencyCheck additionalArguments: '--failOnCVSS 7'
             } else {
               echo "SAST scan was disabled"
