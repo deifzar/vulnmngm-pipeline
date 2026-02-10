@@ -1,18 +1,22 @@
 def call(Closure configClosure) {
   def config = [
-    serviceName     : null,
-    dockerfile      : 'Dockerfile',
-    imageRegistry   : 'ghcr.io/deifzar',
-    runTests        : false,
-    runCodeScan     : false,
-    runImageScan    : true,   // Trivy image scan (enabled by default)
-    trivySeverity   : 'HIGH,CRITICAL',
-    trivySkipDirs   : [],      // List of directories to skip in Trivy scan
-    trivySkipFiles  : [],     // List of files to skip in Trivy scan
-    deploy          : false,
-    environments    : ['dev'],
-    buildImage      : 'golang:1.23',
-    goBinary        : null   // defaults to serviceName if not set
+    serviceName       : null,
+    dockerfile        : 'Dockerfile',
+    imageRegistry     : 'ghcr.io/deifzar',
+    runTests          : false,
+    runCodeScan       : false,
+    runImageScan      : true,   // Trivy image scan (enabled by default)
+    trivySeverity     : 'HIGH,CRITICAL',
+    trivySkipDirs     : [],     // List of directories to skip in Trivy scan
+    trivySkipFiles    : [],     // List of files to skip in Trivy scan
+    deploy            : false,
+    environments      : ['dev'],
+    buildImage        : 'golang:1.23',
+    goBinary          : null,   // defaults to serviceName if not set
+    // Binary publishing config
+    publishBinary     : true,
+    composeStackRepo  : 'https://github.com/deifzar/cptm8-compose-stack.git',
+    gitCredentialsId  : 'github-credentials'  // Jenkins credentials ID
   ]
 
   configClosure.resolveStrategy = Closure.DELEGATE_FIRST
@@ -122,8 +126,21 @@ def call(Closure configClosure) {
         }
       }
 
+      // Runs on agent (not in container) - uses Trivy/tools installed on agent
+      stage('SAST') {
+        steps {
+          script {
+            if (config.runCodeScan) {
+              dependencyCheck additionalArguments: '--failOnCVSS 7'
+            } else {
+              echo "SAST scan was disabled"
+            }
+          }
+        }
+      }
+
       // Run Docker container based on First image
-      stage ("Run container and copy binary out") {
+      stage ("Extract binary from image") {
         steps {
           echo "Working with ${config.serviceName}"
           script {
@@ -150,14 +167,65 @@ def call(Closure configClosure) {
         }
       }
 
-      // Runs on agent (not in container) - uses Trivy/tools installed on agent
-      stage('SAST') {
+      // Create PR to publish binary to compose-stack repository
+      stage ("Publish binary to compose-stack") {
+        when { expression { config.publishBinary } }
         steps {
           script {
-            if (config.runCodeScan) {
-              dependencyCheck additionalArguments: '--failOnCVSS 7'
-            } else {
-              echo "SAST scan was disabled"
+            def binaryName = config.goBinary ?: config.serviceName
+            def branchName = "update-${config.serviceName}-build-${env.BUILD_NUMBER}"
+
+            // gitUsernamePassword works with both GitHub App and PAT credentials
+            withCredentials([gitUsernamePassword(credentialsId: config.gitCredentialsId)]) {
+              sh """
+                echo "Cloning compose-stack repository..."
+                rm -rf compose-stack
+                git clone ${config.composeStackRepo} compose-stack
+                cd compose-stack
+
+                # Configure git
+                git config user.email "jenkins@deifzar.com"
+                git config user.name "Jenkins CI"
+
+                # Create feature branch
+                git checkout -b ${branchName}
+
+                # Create service directory if it doesn't exist
+                mkdir -p services/${config.serviceName}
+
+                # Copy binary to service directory
+                cp ../bin/${binaryName} services/${config.serviceName}/
+                echo "Copied ${binaryName} to services/${config.serviceName}/"
+
+                # Commit changes
+                git add services/${config.serviceName}/${binaryName}
+
+                # Check if there are changes to commit
+                if git diff --cached --quiet; then
+                  echo "No changes to commit - binary is identical"
+                else
+                  git commit -m "Update ${config.serviceName} binary from build #${env.BUILD_NUMBER}"
+
+                  # Push feature branch
+                  git push origin ${branchName}
+                  echo "Pushed branch ${branchName}"
+
+                  # Create PR with auto-merge enabled
+                  gh pr create \\
+                    --title "Update ${config.serviceName} binary (microservices build #${env.BUILD_NUMBER})" \\
+                    --body "Automated PR from Jenkins pipeline.\\n\\n- Service: ${config.serviceName}\\n- Build: #${env.BUILD_NUMBER}\\n- Source: ${env.BUILD_URL}" \\
+                    --base main \\
+                    --head ${branchName}
+
+                  # Enable auto-merge (squash)
+                  gh pr merge --auto --squash ${branchName}
+                  echo "PR created and auto-merge enabled"
+                fi
+
+                # Cleanup
+                cd ..
+                rm -rf compose-stack
+              """
             }
           }
         }
