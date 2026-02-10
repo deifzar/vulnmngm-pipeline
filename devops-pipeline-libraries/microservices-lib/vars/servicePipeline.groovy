@@ -126,6 +126,7 @@ def call(Closure configClosure) {
                     --scanners vuln,secret,misconfig \\
                     --exit-code 1 \\
                     --severity ${config.trivySeverity} \\
+                    --skip-dirs devops-ansible \\
                     --cache-dir /var/trivy-cache \\
                     --format json \\
                     --output trivy-FS-report.json \\
@@ -137,6 +138,7 @@ def call(Closure configClosure) {
                     --scanners vuln,secret,misconfig \\
                     --cache-dir /var/trivy-cache \\
                     --severity ${config.trivySeverity} \\
+                    --skip-dirs devops-ansible \\
                     --format table \\
                     .  
 
@@ -193,6 +195,7 @@ def call(Closure configClosure) {
                     --ignorefile .trivyignore \\
                     --exit-code 1 ${skipDirsArg} ${skipFilesArg}\\
                     --severity ${config.trivySeverity} \\
+                    --skip-dirs devops-ansible \\
                     --cache-dir /var/trivy-cache \\
                     --format json \\
                     --output trivy-IAC-dockerfile-report.json \\
@@ -202,6 +205,7 @@ def call(Closure configClosure) {
                   trivy config \\
                     --ignorefile .trivyignore \\
                     --cache-dir /var/trivy-cache \\
+                    --skip-dirs devops-ansible \\
                     --severity ${config.trivySeverity} \\
                     --format table \\
                     .
