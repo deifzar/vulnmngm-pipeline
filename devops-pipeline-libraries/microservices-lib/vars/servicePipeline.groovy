@@ -1,17 +1,18 @@
 def call(Closure configClosure) {
   def config = [
-    serviceName       : null,
-    dockerfile        : 'Dockerfile',
-    imageRegistry     : 'ghcr.io/deifzar',
-    runTests          : false,
-    runCodeScan       : false,
-    runImageScan      : true,   // Trivy image scan (enabled by default)
-    trivySeverity     : 'HIGH,CRITICAL',
-    trivySkipFiles    : [],     // List of files to skip in Trivy scan
-    deploy            : false,
-    environments      : ['dev'],
-    buildImage        : 'golang:1.23',
-    goBinary          : null   // defaults to serviceName if not set
+    serviceName     : null,
+    dockerfile      : 'Dockerfile',
+    imageRegistry   : 'ghcr.io/deifzar',
+    runTests        : false,
+    runCodeScan     : false,
+    runImageScan    : true,   // Trivy image scan (enabled by default)
+    trivySeverity   : 'HIGH,CRITICAL',
+    trivySkipDirs   : []      // List of directories to skip in Trivy scan
+    trivySkipFiles  : [],     // List of files to skip in Trivy scan
+    deploy          : false,
+    environments    : ['dev'],
+    buildImage      : 'golang:1.23',
+    goBinary        : null   // defaults to serviceName if not set
   ]
 
   configClosure.resolveStrategy = Closure.DELEGATE_FIRST
@@ -106,11 +107,13 @@ def call(Closure configClosure) {
           script {
             if (config.runImageScan) {
               def imageTag = "${config.imageRegistry}/${config.serviceName}:${env.BUILD_NUMBER}"
+              def skipDirsArg = config.trivySkipDirs ? "--skip-files ${config.trivySkipDirs.join(',')}" : ""
               def skipFilesArg = config.trivySkipFiles ? "--skip-files ${config.trivySkipFiles.join(',')}" : ""
+              
 
               sh """
                 echo "Scanning Docker image with Trivy: ${imageTag}"
-                trivy image --exit-code 1 ${skipFilesArg} --severity ${config.trivySeverity} ${imageTag}
+                trivy image --exit-code 1 ${skipDirsArg} ${skipFilesArg} --severity ${config.trivySeverity} ${imageTag}
               """
             } else {
               echo "Trivy scan disabled!"
