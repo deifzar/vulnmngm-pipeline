@@ -1,7 +1,7 @@
 def call(Closure configClosure) {
   def config = [
     serviceName         : null,
-    dockerfile          : 'Dockerfile',
+    dockerfile          : 'dockerfile',
     imageRegistry       : 'ghcr.io/deifzar',
     runTests            : false,
     runSASTScan         : false,
@@ -119,14 +119,15 @@ def call(Closure configClosure) {
             steps {
               echo "Scanning Source Code with Trivy:"
               script {
+                // Note: misconfig scanner disabled here to avoid Trivy Ansible parser bug
+                // IaC scanning is done in separate 'Scan IaC' stage
                 sh """
-                  
+
                   trivy fs \\
                     --ignorefile .trivyignore \\
-                    --scanners vuln,secret,misconfig \\
+                    --scanners vuln,secret \\
                     --exit-code 1 \\
                     --severity ${config.trivySeverity} \\
-                    --skip-dirs devops-ansible \\
                     --cache-dir /var/trivy-cache \\
                     --format json \\
                     --output trivy-FS-report.json \\
@@ -135,12 +136,11 @@ def call(Closure configClosure) {
                   # Table for human-readable console output
                   trivy fs \\
                     --ignorefile .trivyignore \\
-                    --scanners vuln,secret,misconfig \\
+                    --scanners vuln,secret \\
                     --cache-dir /var/trivy-cache \\
                     --severity ${config.trivySeverity} \\
-                    --skip-dirs devops-ansible \\
                     --format table \\
-                    .  
+                    .
 
                 """
               }
