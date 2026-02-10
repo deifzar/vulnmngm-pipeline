@@ -7,7 +7,7 @@ def call(Closure configClosure) {
     runCodeScan     : false,
     runImageScan    : true,   // Trivy image scan (enabled by default)
     trivySeverity   : 'HIGH,CRITICAL',
-    trivySkipDirs   : []      // List of directories to skip in Trivy scan
+    trivySkipDirs   : [],      // List of directories to skip in Trivy scan
     trivySkipFiles  : [],     // List of files to skip in Trivy scan
     deploy          : false,
     environments    : ['dev'],
