@@ -1,22 +1,24 @@
 def call(Closure configClosure) {
   def config = [
-    serviceName       : null,
-    dockerfile        : 'Dockerfile',
-    imageRegistry     : 'ghcr.io/deifzar',
-    runTests          : false,
-    runCodeScan       : false,
-    runImageScan      : true,   // Trivy image scan (enabled by default)
-    trivySeverity     : 'HIGH,CRITICAL',
-    trivySkipDirs     : [],     // List of directories to skip in Trivy scan
-    trivySkipFiles    : [],     // List of files to skip in Trivy scan
-    deploy            : false,
-    environments      : ['dev'],
-    buildImage        : 'golang:1.23',
-    goBinary          : null,   // defaults to serviceName if not set
+    serviceName         : null,
+    dockerfile          : 'Dockerfile',
+    imageRegistry       : 'ghcr.io/deifzar',
+    runTests            : false,
+    runSASTScan         : false,
+    runTrivySourceScan  : false,
+    runTrivyImageScan   : true,   // Trivy image scan (enabled by default)
+    runTrivyIaCScan     : true,
+    trivySeverity       : 'HIGH,CRITICAL',
+    trivySkipDirs       : [],     // List of directories to skip in Trivy scan
+    trivySkipFiles      : [],     // List of files to skip in Trivy scan
+    deploy              : false,
+    environments        : ['dev'],
+    buildImage          : 'golang:1.23',
+    goBinary            : null,   // defaults to serviceName if not set
     // Binary publishing config
-    publishBinary     : true,
-    composeStackRepo  : 'https://github.com/deifzar/cptm8-compose-stack.git',
-    gitCredentialsId  : null  // Jenkins credentials ID
+    publishBinary       : true,
+    composeStackRepo    : 'https://github.com/deifzar/cptm8-compose-stack.git',
+    gitCredentialsId    : null  // Jenkins credentials ID
   ]
 
   configClosure.resolveStrategy = Closure.DELEGATE_FIRST
@@ -33,7 +35,12 @@ def call(Closure configClosure) {
     options {
       timestamps()
       ansiColor('xterm')
-      disableConcurrentBuilds()
+      disableConcurrentBuilds() // prevents race conditions
+    }
+
+    environment {
+      IMAGE_TAG = "${config.imageRegistry}/${config.serviceName}:${env.BUILD_NUMBER}"
+      BINARY_NAME    = "${config.goBinary ?: config.serviceName}"
     }
 
     stages {
@@ -59,18 +66,19 @@ def call(Closure configClosure) {
         }
         steps {
           script {
-            def binaryName = config.goBinary ?: config.serviceName
+            
             sh """
-              echo "Building Go binary: ${binaryName}"
+              echo "Building Go binary: ${BINARY_NAME}"
               go mod download
-              go build -o ${binaryName} .
+              go build -o ${BINARY_NAME} .
             """
           }
           
         }
       }
 
-      stage('Test Go Binary') {
+      stage('Test') {
+        when { expression { config.runTests } }
         agent {
           docker {
             image config.buildImage
@@ -80,14 +88,10 @@ def call(Closure configClosure) {
         }
         steps {
           script {
-            if (config.runTests) {
-              sh """
+            sh """
                 echo "Testing Go"
                 go test -v ./...
               """
-            } else {
-              echo "Running tests were disabled."
-            }
           }
         }
       }
@@ -96,33 +100,135 @@ def call(Closure configClosure) {
       stage('Build Docker Root Image') {
         steps {
           script {
-            def imageTag = "${config.imageRegistry}/${config.serviceName}:${env.BUILD_NUMBER}"
+            
             sh """
-              echo "Building Docker First Image: ${imageTag}"
-              docker build -f ${config.dockerfile} -t ${imageTag} .
+              echo "Building Docker First Image: ${IMAGE_TAG}"
+              docker build -f ${config.dockerfile} -t ${IMAGE_TAG} .
             """
           }
         }
       }
 
       // Runs on agent - uses Trivy installed on agent
-      stage('Scan Docker First Image') {
-        steps {
-          script {
-            if (config.runImageScan) {
-              def imageTag = "${config.imageRegistry}/${config.serviceName}:${env.BUILD_NUMBER}"
-              def skipDirsArg = config.trivySkipDirs ? "--skip-files ${config.trivySkipDirs.join(',')}" : ""
-              def skipFilesArg = config.trivySkipFiles ? "--skip-files ${config.trivySkipFiles.join(',')}" : ""
-              
+      stage('SCA - Software Composition Analysis') {
 
-              sh """
-                echo "Scanning Docker image with Trivy: ${imageTag}"
-                trivy image --exit-code 1 ${skipDirsArg} ${skipFilesArg} --severity ${config.trivySeverity} ${imageTag}
-              """
-            } else {
-              echo "Trivy scan disabled!"
+        parallel {
+          
+          stage('Scan Source Code') {
+            when{ expression {config.runTrivySourceScan}}
+            steps {
+              echo "Scanning Source Code with Trivy:"
+              script {
+                sh """
+                  
+                  trivy fs \\
+                    --ignorefile .trivyignore \\
+                    --scanners vuln,secret,misconfig \\
+                    --exit-code 1 \\
+                    --severity ${config.trivySeverity} \\
+                    --cache-dir /var/trivy-cache \\
+                    --format json \\
+                    --output trivy-FS-report.json \\
+                    .
+
+                  # Table for human-readable console output
+                  trivy fs \\
+                    --ignorefile .trivyignore \\
+                    --scanners vuln,secret,misconfig \\
+                    --cache-dir /var/trivy-cache \\
+                    --severity ${config.trivySeverity} \\
+                    --format table \\
+                    .  
+
+                """
+              }
             }
           }
+
+          stage('Scan Container Image') {
+            when {expression { config.runTrivyImageScan}}
+            steps {
+              echo "Scanning Docker image with Trivy: ${IMAGE_TAG}"
+              script {
+                def skipDirsArg = config.trivySkipDirs ? "--skip-dirs ${config.trivySkipDirs.join(',')}" : ""
+                def skipFilesArg = config.trivySkipFiles ? "--skip-files ${config.trivySkipFiles.join(',')}" : ""
+                  
+                sh """
+                  
+                  trivy image \\
+                    --ignorefile .trivyignore \\
+                    --scanners vuln,secret,misconfig \\
+                    --exit-code 1 ${skipDirsArg} ${skipFilesArg} \\
+                    --severity ${config.trivySeverity} \\
+                    --cache-dir /var/trivy-cache \\
+                    --format json \\
+                    --output trivy-image-report.json \\
+                    ${IMAGE_TAG}
+
+                  # Table for human-readable console output
+                  trivy image \\
+                    --ignorefile .trivyignore \\
+                    --scanners vuln,secret,misconfig \\
+                    --cache-dir /var/trivy-cache \\
+                    --severity ${config.trivySeverity} \\
+                    --format table \\
+                    ${IMAGE_TAG}  
+
+                """
+              }
+            }
+          }
+
+          stage('Scan IaC') {
+            when{expression{config.runTrivyIaCScan}}
+            steps {
+              echo "Scanning Misconfig IaC - Dockerfile:"
+              script {
+                sh """
+                    
+                  trivy config \\
+                    --ignorefile .trivyignore \\
+                    --exit-code 1 \\
+                    --severity ${config.trivySeverity} \\
+                    --cache-dir /var/trivy-cache \\
+                    --format json \\
+                    --output trivy-IAC-dockerfile-report.json \\
+                    .
+
+                  # Table for human-readable console output
+                  trivy config \\
+                    --ignorefile .trivyignore \\
+                    --cache-dir /var/trivy-cache \\
+                    --severity ${config.trivySeverity} \\
+                    --format table \\
+                    .
+                 """
+              }
+            }
+          }
+        } //parallel
+      } // SCA
+
+      stage ('SBOM') {
+        when { expression { config.runTrivyImageScan } }
+        steps {
+            sh """
+                
+                # CycloneDX format (industry standard)
+                trivy image \\
+                  --format cyclonedx \\
+                  --output sbom-${config.serviceName}.cdx.json \\
+                  ${IMAGE_TAG}
+
+                
+                # SPDX format (alternative)
+                trivy image \\
+                  --format spdx-json \\
+                  --output sbom-${config.serviceName}.spdx.json \\
+                  ${IMAGE_TAG}
+
+            """
+
         }
       }
 
@@ -130,7 +236,7 @@ def call(Closure configClosure) {
       stage('SAST') {
         steps {
           script {
-            if (config.runCodeScan) {
+            if (config.runSASTScan) {
               dependencyCheck additionalArguments: '--failOnCVSS 7'
             } else {
               echo "SAST scan was disabled"
@@ -144,11 +250,10 @@ def call(Closure configClosure) {
         steps {
           echo "Working with ${config.serviceName}"
           script {
-            def imageTag = "${config.imageRegistry}/${config.serviceName}:${env.BUILD_NUMBER}"
             sh """
-              echo "Extracting binary from image: ${imageTag}"
+              echo "Extracting binary from image: ${IMAGE_TAG}"
 
-              container_id=\$(docker create ${imageTag})
+              container_id=\$(docker create ${IMAGE_TAG})
               echo "Created container: \$container_id"
 
               # Copy binary out
@@ -172,7 +277,7 @@ def call(Closure configClosure) {
         when { expression { config.publishBinary } }
         steps {
           script {
-            def binaryName = config.goBinary ?: config.serviceName
+            
             def branchName = "update-${config.serviceName}-build-${env.BUILD_NUMBER}"
 
             // gitUsernamePassword works with both GitHub App and PAT credentials
@@ -198,11 +303,11 @@ def call(Closure configClosure) {
                 mkdir -p services/${config.serviceName}
 
                 # Copy binary to service directory
-                cp ../bin/${binaryName} services/${config.serviceName}/
-                echo "Copied ${binaryName} to services/${config.serviceName}/"
+                cp ../bin/${BINARY_NAME} services/${config.serviceName}/
+                echo "Copied ${BINARY_NAME} to services/${config.serviceName}/"
 
                 # Commit changes
-                git add services/${config.serviceName}/${binaryName}
+                git add services/${config.serviceName}/${BINARY_NAME}
 
                 # Check if there are changes to commit
                 if git diff --cached --quiet; then
@@ -239,10 +344,10 @@ def call(Closure configClosure) {
       // stage('Publish Image') {
       //   steps {
       //     script {
-      //       def imageTag = "${config.imageRegistry}/${config.serviceName}:${env.BUILD_NUMBER}"
+      //       
       //       sh """
-      //         echo "Pushing Docker image: ${imageTag}"
-      //         docker push ${imageTag}
+      //         echo "Pushing Docker image: ${IMAGE_TAG}"
+      //         docker push ${IMAGE_TAG}
       //       """
       //     }
       //   }
@@ -255,6 +360,32 @@ def call(Closure configClosure) {
             echo 'Hello Deploy !!!'
           """
         }
+      }
+    } // stages
+
+    post {
+      always {
+        
+        archiveArtifacts(
+            artifacts: 'trivy-*.json, sbom-*.json, dependency-check-report/**',
+            allowEmptyArchive: true
+        )
+
+        script {
+            sh """
+              docker rmi ${IMAGE_TAG} || true
+              docker image prune -f || true
+              """
+            // Clean workspace
+            cleanWs()
+        }
+        
+      }
+      success {
+        echo "✅ Pipeline completed successfully for ${config.serviceName} build #${env.BUILD_NUMBER}"
+      }
+      failure {
+        echo "❌ Pipeline failed for ${config.serviceName} build #${env.BUILD_NUMBER}"
       }
     }
   }
