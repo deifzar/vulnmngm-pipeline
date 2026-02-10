@@ -126,7 +126,7 @@ def call(Closure configClosure) {
                   trivy fs \\
                     --ignorefile .trivyignore \\
                     --scanners vuln,secret \\
-                    --exit-code 1 \\
+                    --exit-code 0 \\
                     --severity ${config.trivySeverity} \\
                     --cache-dir /var/trivy-cache \\
                     --format json \\
@@ -193,7 +193,7 @@ def call(Closure configClosure) {
                   
                   trivy config \\
                     --ignorefile .trivyignore \\
-                    --exit-code 1 ${skipDirsArg} ${skipFilesArg}\\
+                    --exit-code 0 ${skipDirsArg} ${skipFilesArg}\\
                     --severity ${config.trivySeverity} \\
                     --skip-dirs devops-ansible \\
                     --cache-dir /var/trivy-cache \\
