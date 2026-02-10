@@ -122,10 +122,25 @@
         group: jenkins
         mode: "0755"
 
-- name: Add Jenkins controller to /etc/hosts (use private IP)
+- name: Create Trivy cache directory
+  become: true
+  file:
+    path: /var/trivy-cache
+    state: directory
+    owner: jenkins
+    group: jenkins
+    mode: "0755"
+
+- name: Add Jenkins controller to /etc/hosts
   lineinfile:
     path: /etc/hosts
     line: "{{ jenkins_controller_internal_address }} {{ jenkins_controller_fqdn }}"
+    state: present
+
+- name: Add SonarQube to /etc/hosts
+  lineinfile:
+    path: /etc/hosts
+    line: "{{ sonarqube_internal_address }} {{ sonarqube_fqdn }}"
     state: present
 
 - name: Link Agent to controller
