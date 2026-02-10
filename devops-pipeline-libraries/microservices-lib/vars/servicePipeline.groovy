@@ -177,7 +177,11 @@ def call(Closure configClosure) {
 
             // gitUsernamePassword works with both GitHub App and PAT credentials
             withCredentials([gitUsernamePassword(credentialsId: config.gitCredentialsId)]) {
+              // GIT_PASSWORD is set by gitUsernamePassword, use it for gh CLI
               sh """
+                # Set GH_TOKEN for GitHub CLI authentication
+                export GH_TOKEN=\$GIT_PASSWORD
+
                 echo "Cloning compose-stack repository..."
                 rm -rf compose-stack
                 git clone ${config.composeStackRepo} compose-stack
