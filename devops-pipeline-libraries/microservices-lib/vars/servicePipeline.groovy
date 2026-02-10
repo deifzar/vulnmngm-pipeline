@@ -199,7 +199,7 @@ def call(Closure configClosure) {
                     --cache-dir /var/trivy-cache \\
                     --format json \\
                     --output trivy-IAC-dockerfile-report.json \\
-                    .
+                    ${config.dockerfile}
 
                   # Table for human-readable console output
                   trivy config \\
@@ -208,7 +208,7 @@ def call(Closure configClosure) {
                     --skip-dirs devops-ansible \\
                     --severity ${config.trivySeverity} \\
                     --format table \\
-                    .
+                    ${config.dockerfile}
                  """
               }
             }
