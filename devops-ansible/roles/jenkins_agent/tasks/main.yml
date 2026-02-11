@@ -97,6 +97,25 @@
           - gh
         state: present
 
+- name: Install GitLab CLI
+  become: true
+  block:
+    - name: Check if WakeMeOps repo exists
+      stat:
+        path: /etc/apt/sources.list.d/wakemeops.list
+      register: wakemeops_repo
+
+    - name: Add WakeMeOps repository
+      shell: curl -sSL "https://raw.githubusercontent.com/upciti/wakemeops/main/assets/install_repository" | sudo bash
+      when: not wakemeops_repo.stat.exists
+
+    - name: Install GitLab CLI
+      apt:
+        name:
+          - glab
+        state: present
+        update_cache: yes
+
 - name: Create Jenkins system user
   block:
     - name: Create group
