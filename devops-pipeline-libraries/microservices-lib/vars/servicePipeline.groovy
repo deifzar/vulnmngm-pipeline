@@ -21,7 +21,6 @@ def call(Closure configClosure) {
     gitCredentialsId        : null,  // Jenkins credentials ID
     // SonarQube config
     sonarqubeUrl            : null,  // SonarQube server URL (e.g., 'https://sonar.example.com')
-    sonarqubeProjectKey     : null,  
     sonarqubeCredentialsId  : null  // Jenkins credentials ID for SonarQube token
   ]
 
@@ -33,9 +32,7 @@ def call(Closure configClosure) {
     error 'serviceName must be defined'
   }
 
-  if (config.runSASTScan && (!config.sonarqubeUrl 
-        || !config.sonarqubeProjectKey 
-        || !config.sonarqubeCredentialsId) ) {
+  if (config.runSASTScan && (!config.sonarqubeUrl || !config.sonarqubeCredentialsId) ) {
     error 'sonarqube config variables must be defined'
   }
 
@@ -100,10 +97,47 @@ def call(Closure configClosure) {
           script {
             sh """
                 echo "Testing Go"
-                go test -v -coverprofile=coverage.out ./...
+                go test \\
+                -v \\
+                -coverprofile=coverage.out \\
+                -covermode=atomic \\
+                ./...
               """
           }
         }
+      }
+
+      // SAST - Static Application Security Testing with SonarQube
+      stage('SAST') {
+        when { expression { config.runSASTScan } }
+
+        agent {
+          docker {
+            image "${SONARQUBE}"
+            reuseNode true  // Use same workspace
+            args "-e SONAR_USER_HOME=${WORKSPACE}/.sonar" // Define a writable home directory for Sonar inside the workspace
+          }
+        }
+
+        steps {
+          script {
+            
+            withCredentials([string(credentialsId: config.sonarqubeCredentialsId, variable: 'SONAR_TOKEN')]) {
+              sh """
+                echo "Running SonarQube SAST scan for project: ${config.sonarqubeProjectKey}"
+
+                sonar-scanner \\
+                  -Dsonar.token=\$SONAR_TOKEN \\
+                  -Dsonar.exclusions=**/*_test.go,**/vendor/**,**/.go/** \\
+                  -Dsonar.qualitygate.wait=true
+              """
+            }
+          }
+        }
+      }
+
+      stage('Quality Gate') {
+
       }
 
       // Runs on agent - uses Docker CLI installed on agent
@@ -119,8 +153,8 @@ def call(Closure configClosure) {
         }
       }
 
-      // Runs on agent - uses Trivy installed on agent
-      stage('SCA - Software Composition Analysis') {
+      // Software Composition Analysis
+      stage('SCA') {
 
         parallel {
           
@@ -249,40 +283,7 @@ def call(Closure configClosure) {
             """
 
         }
-      }
-
-      // SAST - Static Application Security Testing with SonarQube
-      stage('SAST') {
-        when { expression { config.runSASTScan } }
-
-        agent {
-          docker {
-            image "${SONARQUBE}"
-            reuseNode true  // Use same workspace
-            args "-e SONAR_USER_HOME=${WORKSPACE}/.sonar" // Define a writable home directory for Sonar inside the workspace
-          }
-        }
-
-        steps {
-          script {
-            
-            withCredentials([string(credentialsId: config.sonarqubeCredentialsId, variable: 'SONAR_TOKEN')]) {
-              sh """
-                echo "Running SonarQube SAST scan for project: ${config.sonarqubeProjectKey}"
-
-                sonar-scanner \\
-                  -Dsonar.host.url=${config.sonarqubeUrl} \\
-                  -Dsonar.token=\$SONAR_TOKEN \\
-                  -Dsonar.projectKey=${config.sonarqubeProjectKey} \\
-                  -Dsonar.sources=. \\
-                  -Dsonar.exclusions=**/*_test.go,**/vendor/**,**/.go/** \\
-                  -Dsonar.go.coverage.reportPaths=coverage.out \\
-                  -Dsonar.qualitygate.wait=true
-              """
-            }
-          }
-        }
-      }
+      } //SBOM
 
       // Run Docker container based on First image
       stage ("Extract binary from image") {
