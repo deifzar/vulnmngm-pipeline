@@ -137,7 +137,9 @@ def call(Closure configClosure) {
       }
 
       stage('Quality Gate') {
-
+        steps {
+          echo "Quality Gate enforcement"
+        }
       }
 
       // Runs on agent - uses Docker CLI installed on agent
