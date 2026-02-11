@@ -1,24 +1,29 @@
 def call(Closure configClosure) {
   def config = [
-    serviceName         : null,
-    dockerfile          : 'dockerfile',
-    imageRegistry       : 'ghcr.io/deifzar',
-    runTests            : false,
-    runSASTScan         : false,
-    runTrivySourceScan  : false,
-    runTrivyImageScan   : true,   // Trivy image scan (enabled by default)
-    runTrivyIaCScan     : false,
-    trivySeverity       : 'HIGH,CRITICAL',
-    trivySkipDirs       : [],     // List of directories to skip in Trivy scan
-    trivySkipFiles      : [],     // List of files to skip in Trivy scan
-    deploy              : false,
-    environments        : ['dev'],
-    buildImage          : 'golang:1.23',
-    goBinary            : null,   // defaults to serviceName if not set
+    serviceName             : null,
+    dockerfile              : 'dockerfile',
+    imageRegistry           : 'ghcr.io/deifzar',
+    runTests                : false,
+    runSASTScan             : false,
+    runTrivySourceScan      : false,
+    runTrivyImageScan       : true,   // Trivy image scan (enabled by default)
+    runTrivyIaCScan         : false,
+    trivySeverity           : 'HIGH,CRITICAL',
+    trivySkipDirs           : [],     // List of directories to skip in Trivy scan
+    trivySkipFiles          : [],     // List of files to skip in Trivy scan
+    deploy                  : false,
+    environments            : ['dev'],
+    buildImage              : 'golang:1.23',
+    goBinary                : null,   // defaults to serviceName if not set
     // Binary publishing config
-    publishBinary       : true,
-    composeStackRepo    : 'https://github.com/deifzar/cptm8-compose-stack.git',
-    gitCredentialsId    : null  // Jenkins credentials ID
+    publishBinary           : true,
+    composeStackRepo        : 'https://github.com/deifzar/cptm8-compose-stack.git',
+    gitCredentialsId        : null,  // Jenkins credentials ID
+    // SonarQube config
+    sonarqubeUrl            : null,  // SonarQube server URL (e.g., 'https://sonar.example.com')
+    sonarqubeProjectName    : null,
+    sonarqubeProjectKey     : null,  
+    sonarqubeCredentialsId  : null  // Jenkins credentials ID for SonarQube token
   ]
 
   configClosure.resolveStrategy = Closure.DELEGATE_FIRST
@@ -27,6 +32,13 @@ def call(Closure configClosure) {
 
   if (!config.serviceName) {
     error 'serviceName must be defined'
+  }
+
+  if (config.runSASTScan && (!config.sonarqubeUrl 
+        || !config.sonarqubeProjectName 
+        || !config.sonarqubeProjectKey 
+        || !config.sonarqubeCredentialsId) ) {
+    error 'sonarqube config variables must be defined'
   }
 
   pipeline {
@@ -41,6 +53,7 @@ def call(Closure configClosure) {
     environment {
       IMAGE_TAG = "${config.imageRegistry}/${config.serviceName}:${env.BUILD_NUMBER}"
       BINARY_NAME    = "${config.goBinary ?: config.serviceName}"
+      SONARQUBE = "sonarsource/sonar-scanner-cli:12.0"
     }
 
     stages {
@@ -73,7 +86,6 @@ def call(Closure configClosure) {
               go build -o ${BINARY_NAME} .
             """
           }
-          
         }
       }
 
@@ -144,6 +156,8 @@ def call(Closure configClosure) {
 
                 """
               }
+              // OWASP Dependency Checks
+              // dependencyCheck additionalArguments: '--failOnCVSS 7'
             }
           }
 
@@ -239,14 +253,35 @@ def call(Closure configClosure) {
         }
       }
 
-      // Runs on agent (not in container) - uses Trivy/tools installed on agent
+      // SAST - Static Application Security Testing with SonarQube
       stage('SAST') {
+        when { expression { config.runSASTScan } }
+
+        agent {
+          docker {
+            image "${SONARQUBE}"
+            reuseNode true  // Use same workspace
+          }
+        }
+
         steps {
           script {
-            if (config.runSASTScan) {
-              dependencyCheck additionalArguments: '--failOnCVSS 7'
-            } else {
-              echo "SAST scan was disabled"
+            def projectKey = config.sonarqubeProjectKey ?: config.serviceName
+
+            withCredentials([string(credentialsId: config.sonarqubeCredentialsId, variable: 'SONAR_TOKEN')]) {
+              sh """
+                echo "Running SonarQube SAST scan for project: ${projectKey}"
+
+                sonar-scanner \\
+                  -Dsonar.host.url=${config.sonarqubeUrl} \\
+                  -Dsonar.token=\$SONAR_TOKEN \\
+                  -Dsonar.projectKey=${config.sonarqubeProjectKey} \\
+                  -Dsonar.projectName=${config.sonarqubeProjectName} \\
+                  -Dsonar.sources=. \\
+                  -Dsonar.exclusions=**/*_test.go,**/vendor/**,**/.go/** \\
+                  -Dsonar.go.coverage.reportPaths=coverage.out \\
+                  -Dsonar.qualitygate.wait=true
+              """
             }
           }
         }
