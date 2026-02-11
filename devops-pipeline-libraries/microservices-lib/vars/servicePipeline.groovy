@@ -4,7 +4,7 @@ def call(Closure configClosure) {
     dockerfile              : 'dockerfile',
     imageRegistry           : 'ghcr.io/deifzar',
     runTests                : false,
-    runSASTScan             : false,
+    runSASTScan             : false, // Sonarqube
     runTrivySourceScan      : false,
     runTrivyImageScan       : true,   // Trivy image scan (enabled by default)
     runTrivyIaCScan         : false,
@@ -100,7 +100,7 @@ def call(Closure configClosure) {
           script {
             sh """
                 echo "Testing Go"
-                go test -v ./...
+                go test -v -coverprofile=coverage.out ./...
               """
           }
         }
@@ -259,6 +259,7 @@ def call(Closure configClosure) {
           docker {
             image "${SONARQUBE}"
             reuseNode true  // Use same workspace
+            args "-e SONAR_USER_HOME=${WORKSPACE}/.sonar" // Define a writable home directory for Sonar inside the workspace
           }
         }
 
