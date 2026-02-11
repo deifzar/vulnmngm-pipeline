@@ -21,7 +21,6 @@ def call(Closure configClosure) {
     gitCredentialsId        : null,  // Jenkins credentials ID
     // SonarQube config
     sonarqubeUrl            : null,  // SonarQube server URL (e.g., 'https://sonar.example.com')
-    sonarqubeProjectName    : null,
     sonarqubeProjectKey     : null,  
     sonarqubeCredentialsId  : null  // Jenkins credentials ID for SonarQube token
   ]
@@ -35,7 +34,6 @@ def call(Closure configClosure) {
   }
 
   if (config.runSASTScan && (!config.sonarqubeUrl 
-        || !config.sonarqubeProjectName 
         || !config.sonarqubeProjectKey 
         || !config.sonarqubeCredentialsId) ) {
     error 'sonarqube config variables must be defined'
@@ -266,17 +264,15 @@ def call(Closure configClosure) {
 
         steps {
           script {
-            def projectKey = config.sonarqubeProjectKey ?: config.serviceName
-
+            
             withCredentials([string(credentialsId: config.sonarqubeCredentialsId, variable: 'SONAR_TOKEN')]) {
               sh """
-                echo "Running SonarQube SAST scan for project: ${projectKey}"
+                echo "Running SonarQube SAST scan for project: ${config.sonarqubeProjectKey}"
 
                 sonar-scanner \\
                   -Dsonar.host.url=${config.sonarqubeUrl} \\
                   -Dsonar.token=\$SONAR_TOKEN \\
                   -Dsonar.projectKey=${config.sonarqubeProjectKey} \\
-                  -Dsonar.projectName=${config.sonarqubeProjectName} \\
                   -Dsonar.sources=. \\
                   -Dsonar.exclusions=**/*_test.go,**/vendor/**,**/.go/** \\
                   -Dsonar.go.coverage.reportPaths=coverage.out \\
