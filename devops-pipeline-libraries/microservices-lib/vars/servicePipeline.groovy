@@ -128,7 +128,7 @@ def call(Closure configClosure) {
 
                 sonar-scanner \\
                   -Dsonar.token=\$SONAR_TOKEN \\
-                  -Dsonar.exclusions=**/*_test.go,**/vendor/**,**/.go/** \\
+                  -Dsonar.host.url=${config.sonarqubeUrl} \\
                   -Dsonar.qualitygate.wait=true
               """
             }
