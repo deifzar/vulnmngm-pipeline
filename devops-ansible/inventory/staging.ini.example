@@ -13,6 +13,9 @@ jenkins-agent-staging-2 ansible_host=<JENKINS_PRIVATE_AGENT_2> ansible_user=<SSH
 [sonarqube_servers]
 sonarqube-staging ansible_host=<SONARQUBE_PUBLIC_IP> ansible_user=<SSH_USERNAME>
 
+[artifactory_servers]
+artifactory-staging ansible_host=<SONARQUBE_PUBLIC_IP> ansible_user=<SSH_USERNAME>
+
 [jenkins_controllers:vars]
 # SSH configuration - path to your SSH private key
 ansible_ssh_private_key_file=<PATH_TO_SSH_PRIVATE_KEY>
@@ -25,10 +28,15 @@ ansible_ssh_private_key_file=<PATH_TO_SSH_PRIVATE_KEY>
 # SSH configuration - path to your SSH private key
 ansible_ssh_private_key_file=<PATH_TO_SSH_PRIVATE_KEY>
 
+[artifactory_servers:vars]
+# SSH configuration - path to your SSH private key
+ansible_ssh_private_key_file=<PATH_TO_SSH_PRIVATE_KEY>
+
 [devtools:children]
 jenkins_controllers
 jenkins_agents
 sonarqube_servers
+artifactory_servers
 
 # Group variables
 [devtools:vars]

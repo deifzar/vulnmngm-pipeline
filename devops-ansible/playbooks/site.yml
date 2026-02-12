@@ -3,12 +3,16 @@
 
 - name: Deploy Jenkins Constroller
   import_playbook: deploy_jenkins_controller.yml
-  tags: [jenkins_controller, jenkins]
+  tags: [devsecop, jenkins_controller, jenkins]
 
 - name: Deploy Jenkins Agent
   import_playbook: deploy_jenkins_agent.yml
-  tags: [jenkins_agent, jenkins]
+  tags: [devsecop, jenkins_agent, jenkins]
 
 - name: Deploy SonarQube
   import_playbook: deploy_sonarqube.yml
-  tags: [sonarqube]
+  tags: [devsecop, sonarqube]
+
+- name: Deploy Artifactory
+  import_playbook: deploy_artifactory.yml
+  tags: [devsecop, artifactory]

@@ -3,5 +3,8 @@
 #
 # cp jenkins_agents.yml.example jenkins_agents.yml
 
-jenkins_fqdn: "<FQDN_jenkins_node>"
-jenkins_internal_address: "<INTERNAL_IP_JENKINS_NODE>"
+jenkins_controller_fqdn: "<FQDN_jenkins_controller>"
+jenkins_controller_internal_address: "<INTERNAL_IP_JENKINS_CONTROLLER>"
+jenkins_controller_secret: "{{ vault_jenkins_agent_secret }}"
+sonarqube_fqdn: "<FQDN_sonarqube>"
+sonarqube_internal_address: "<INTERNAL_IP_SONARQUBE_NODE>"

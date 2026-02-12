@@ -1,6 +1,6 @@
 ---
-- name: Deploy Jenkins Controller with Nginx reverse proxy
-  hosts: jenkins_controllers
+- name: Deploy Artifactory with Nginx reverse proxy
+  hosts: artifactory_servers
   become: yes
 
   pre_tasks:
@@ -18,15 +18,15 @@
     - role: security_baseline
       tags: ["security", "baseline"]
 
-    - role: jenkins
-      tags: ["jenkins", "app"]
+    - role: artifactory
+      tags: ["artifactory", "app"]
 
     - role: nginx_reverse_proxy
       vars:
-        service_name: "jenkins"
-        service_domain: "{{ jenkins_domain }}"
-        backend_host: "{{ jenkins_listen_address }}"
-        backend_port: "{{ jenkins_port }}"
+        service_name: "artifactory"
+        service_domain: "{{ artifactory_domain }}"
+        backend_host: "{{ artifactory_listen_address }}"
+        backend_port: "{{ artifactory_port }}"
         websocket_support: true
         proxy_timeout: 90
       tags: ["nginx", "proxy"]
@@ -36,14 +36,14 @@
       debug:
         msg: |
           ================================================
-          Jenkins deployment completed successfully!
+          Artifactory deployment completed successfully!
           ================================================
-          Access Jenkins at: https://{{ jenkins_domain }}
+          Access Artifactory at: https://{{ artifactory_domain }}
 
           Initial admin password has been displayed above.
 
           Next steps:
-          1. Complete Jenkins setup wizard
-          2. Configure Jenkins plugins
-          3. Set up Jenkins jobs/pipelines
+          1. Complete Artifactory setup wizard
+          2. Configure Artifactory plugins
+          3. Set up Artifactory jobs/pipelines
           ================================================

@@ -1,0 +1,12 @@
+[Service]
+# Increase the limit for open files (critical for Artifactory)
+LimitNOFILE=65535
+LimitNPROC=65535
+TasksMax=infinity
+
+# Adjusting Memory and Java Options if needed
+# Environment="JF_ROUTER_ENTRYPOINTS_EXTERNALPORT=8082"
+# Environment="JAVA_OPTS=-Xms2g -Xmx4g"
+
+# Ensure the service waits long enough to start up 
+TimeoutStartSec=0
