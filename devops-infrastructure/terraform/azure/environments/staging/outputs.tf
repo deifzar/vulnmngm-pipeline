@@ -14,13 +14,13 @@ output "bastion_fqdn" {
 }
 
 # Jenkins Node and Agent VM details
-output "jenkins_node_vm_details" {
-  description = "Jenkins Node VM connection details"
+output "jenkins_controller_vm" {
+  description = "Jenkins Controller VM connection details"
   value = {
-    vm_name    = module.jenkins_node_vm.vm_name
-    private_ip = module.jenkins_node_vm.private_ip_address
-    public_ip  = module.jenkins_node_vm.public_ip_address
-    fqdn       = module.jenkins_node_vm.public_ip_fqdn
+    vm_name    = module.jenkins_controller_vm.vm_name
+    private_ip = module.jenkins_controller_vm.private_ip_address
+    public_ip  = module.jenkins_controller_vm.public_ip_address
+    fqdn       = module.jenkins_controller_vm.public_ip_fqdn
   }
 }
 
@@ -54,10 +54,10 @@ output "key_vault_name" {
 output "ansible_inventory" {
   description = "Ansible inventory information"
   value = {
-    jenkins_node = {
-      ansible_host = module.jenkins_node_vm.public_ip_address
+    jenkins_controller = {
+      ansible_host = module.jenkins_controller_vm.public_ip_address
       ansible_user = "azureadmin"
-      private_ip   = module.jenkins_node_vm.private_ip_address
+      private_ip   = module.jenkins_controller_vm.private_ip_address
     }
     jenkins_agent = {
       ansible_host = module.jenkins_agent_vm.public_ip_address
@@ -68,6 +68,11 @@ output "ansible_inventory" {
       ansible_host = module.sonarqube_vm.public_ip_address
       ansible_user = "azureadmin"
       private_ip   = module.sonarqube_vm.private_ip_address
+    }
+    artifactory = {
+      ansible_host = module.artifactory_vm.public_ip_address
+      ansible_user = "azureadmin"
+      private_ip   = module.artifactory_vm.private_ip_address
     }
   }
 }

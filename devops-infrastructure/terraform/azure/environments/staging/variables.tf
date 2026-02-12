@@ -24,14 +24,25 @@ variable "allowed_https_source_ips" {
   # will be visible in Azure Portal anyway
 }
 
+variable "allowed_https_source_github_hooks_ips" {
+  description = "List of GitHub Hooks IPs allowed for HTTPS access"
+  type        = list(string)
+}
+
 variable "ssh_public_key_path" {
   description = "Path to SSH public key"
   type        = string
   default     = "/path/to/sshkey.pub"
 }
 
-variable "postgresql_admin_password" {
+variable "postgresql_sonarqube_admin_password" {
   description = "PostgreSQL admin password for SonarQube DB"
+  type        = string
+  sensitive   = true
+}
+
+variable "postgresql_artifactory_admin_password" {
+  description = "PostgreSQL admin password for Artifactory DB"
   type        = string
   sensitive   = true
 }
