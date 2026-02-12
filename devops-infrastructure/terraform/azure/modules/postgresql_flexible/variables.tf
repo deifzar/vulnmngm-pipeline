@@ -36,6 +36,12 @@ variable "postgresql_admin_password" {
   sensitive   = true
 }
 
+variable "database_name" {
+  description = "Name of the database to create"
+  type        = string
+  default     = "appdb"
+}
+
 variable "tags" {
   description = "Tags to apply to all resources"
   type        = map(string)

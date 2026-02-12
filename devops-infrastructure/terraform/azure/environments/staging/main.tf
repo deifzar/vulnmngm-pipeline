@@ -580,7 +580,7 @@ module "artifactory_vm" {
 
   resource_group_name    = azurerm_resource_group.devsecops.name
   location               = azurerm_resource_group.devsecops.location
-  vm_name                = "vm-sonarqube-${var.environment}"
+  vm_name                = "vm-artifactory-${var.environment}"
   vm_size                = "Standard_D2s_v3"
   admin_username         = "azureadmin"
   ssh_public_key         = file(var.ssh_public_key_path)
@@ -615,6 +615,7 @@ module "postgresql_sonarqube" {
 
   postgresql_admin_username = "sqadmin"
   postgresql_admin_password = var.postgresql_sonarqube_admin_password
+  database_name             = "sonarqube"
 
   tags = merge(var.tags, {
     Service = "Postgresql-sonarqube"
@@ -634,6 +635,7 @@ module "postgresql_artifactory" {
 
   postgresql_admin_username = "artifactory"
   postgresql_admin_password = var.postgresql_artifactory_admin_password
+  database_name             = "artifactory"
 
   tags = merge(var.tags, {
     Service = "Postgresql-Artifactory"
