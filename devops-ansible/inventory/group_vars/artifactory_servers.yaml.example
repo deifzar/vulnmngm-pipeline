@@ -1,0 +1,8 @@
+# Artifactory Configuration Example
+# Copy this file to artifactory_servers.yml and fill in your actual values
+#
+# cp artifactory_servers.yml.example artifactory_servers.yml
+
+artifactory_domain: "<FQDN_artifactory>"
+artifactory_listen_address: "127.0.0.1"
+artifactory_port: 8081

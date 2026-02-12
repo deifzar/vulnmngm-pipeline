@@ -1,0 +1,16 @@
+---
+# Artifactory Server Configuration Variables
+
+# Domain and networking
+artifactory_domain: "artifactory-cptm8net.spaincentral.cloudapp.azure.com"
+artifactory_listen_address: "127.0.0.1"
+# Note: Artifactory 7.x uses 8082 as main router port, 8081 is internal
+artifactory_port: 8082
+
+# Database configuration (Azure PostgreSQL)
+artifactory_db_host: "psql-artifactory-{{ env }}.postgres.database.azure.com"
+artifactory_db_port: 5432
+artifactory_db_name: "artifactory"
+artifactory_db_username: "artifactory"
+# Reference the Ansible Vault variable
+artifactory_db_password: "{{ vault_artifactory_db_password }}"

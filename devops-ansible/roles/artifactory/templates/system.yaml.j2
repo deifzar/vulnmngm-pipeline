@@ -1,0 +1,20 @@
+shared:
+  database:
+    type: postgresql
+    driver: org.postgresql.Driver
+    url: "jdbc:postgresql://{{ artifactory_db_host }}:{{ artifactory_db_port }}/{{ artifactory_db_name }}?sslmode=require"
+    username: "{{ artifactory_db_username }}"
+    password: "{{ artifactory_db_password }}"
+  node:
+    id: "{{ artifactory_agent_name }}"
+    ip: "{{ artifactory_listen_address }}"
+  security:
+    auditLog:
+      enabled: true
+  artifactory:
+    extraJavaOpts: "-Xms2g -Xmx4g"  # JVM memory settings
+  
+  router:
+    entrypoints:
+      externalPort: {{ artifactory_port }}
+  

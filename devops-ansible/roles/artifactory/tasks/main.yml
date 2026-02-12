@@ -1,0 +1,93 @@
+---
+- name: Create Artifactory system user
+  user:
+    name: artifactory
+    system: yes
+    create_home: yes
+    home: /home/artifactory
+    shell: /bin/bash
+    state: present
+
+- name: Install Java JDK (required for Artifactory)
+  apt:
+    name:
+      - openjdk-21-jre
+    state: present
+    update_cache: yes
+
+- name: Ensure apt keyrings directory exists
+  file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: Download JFrog Artifactory GPG key
+  get_url:
+    url: https://releases.jfrog.io/artifactory/api/v2/repositories/artifactory-pro-debs/keyPairs/primary/public
+    dest: /etc/apt/keyrings/jfrog-artifactory.asc
+    mode: "0644"
+
+- name: Add JFrog Artifactory repository
+  apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/jfrog-artifactory.asc] https://releases.jfrog.io/artifactory/artifactory-pro-debs {{ ansible_distribution_release }} main"
+    filename: jfrog-artifactory
+    state: present
+
+- name: Update apt cache after adding JFrog Artifactory repo
+  apt:
+    update_cache: yes
+
+- name: Install JFrog Artifactory Pro
+  apt:
+    name: jfrog-artifactory-pro
+    state: present
+
+- name: Create Artifactory systemd override directory
+  file:
+    path: /etc/systemd/system/artifactory.service.d
+    state: directory
+    mode: "0755"
+
+- name: Check if Artifactory system.yaml exists
+  stat:
+    path: /opt/jfrog/artifactory/var/etc/system.yaml
+  register: system_file
+
+- name: Configure Artifactory to listen on localhost only
+  template:
+    src: artifactory.override.j2
+    dest: /etc/systemd/system/artifactory.service.d/override.conf
+    mode: "0644"
+  when: not system_file.stat.exists
+  notify:
+    - Reload systemd
+    - Restart Artifactory
+
+- name: Configure Artifactory properties
+  template:
+    src: system.yaml.j2
+    dest: /opt/jfrog/artifactory/var/etc/system.yaml
+    mode: "0644"
+    owner: artifactory
+    group: artifactory
+  notify:
+    - Reload systemd
+    - Restart Artifactory
+
+- name: Flush handlers to ensure service is restarted
+  meta: flush_handlers
+
+- name: Ensure Artifactory service is running
+  service:
+    name: artifactory
+    state: started
+    enabled: yes
+
+- name: Wait for Artifactory port to be available
+  wait_for:
+    port: "{{ artifactory_port }}"
+    host: "{{ artifactory_listen_address }}"
+    delay: 10
+    timeout: 600
+  register: artifactory_port_wait
+  ignore_errors: yes
