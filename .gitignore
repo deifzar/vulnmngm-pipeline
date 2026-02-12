@@ -9,6 +9,7 @@ id_rsa*
 
 # VScode
 .vscode/
+.prettierrc
 
 # Editor backups
 *~
