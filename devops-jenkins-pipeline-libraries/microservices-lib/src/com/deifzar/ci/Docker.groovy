@@ -19,6 +19,35 @@ class Docker implements Serializable {
   void push(String service, String registry) {
     steps.sh "docker push ${registry}/${service}:${steps.env.BUILD_NUMBER}"
   }
+
+  void getBinary(image, location) {
+    steps.sh """
+      echo "Extracting binary from image: ${image}"
+
+              container_id=\$(docker create ${image})
+              echo "Created container: \$container_id"
+
+              # Copy binary out
+              mkdir -p ./bin
+              docker cp "\$container_id:${location}" "./bin"
+              echo "Copied binary to ./bin"
+
+              # Check bin directory content
+              ls -lha bin
+
+              # Cleanup
+              docker rm \$container_id
+              echo "Removed container: \$container_id"
+    """
+  }
+
+  void removeImage(image) {
+    steps.sh """
+      docker rmi ${image} || true
+      docker image prune -f || true
+    """
+
+  }
 }
 
 /* if servicePipeline.groovy use this class:
