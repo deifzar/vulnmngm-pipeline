@@ -43,25 +43,28 @@ This DevSecOps infrastructure is designed to support the [CPTM8 project](https:/
                                     |   Azure Cloud    |
                                     +--------+---------+
                                              |
-          +---------------+------------------+------------------+---------------+
-          |               |                  |                  |               |
- +--------v--------+  +---v----+     +-------v-------+  +-------v-------+  +----v-----------+
- |    Jenkins      |  |Jenkins |     |  SonarQube VM |  | PostgreSQL    |  | Azure Bastion  |
- |   Controller    |  | Agent  |     |   (SAST)      |  | Flexible DB   |  | (Secure Access)|
- +--------+--------+  +---+----+     +---------------+  +---------------+  +----------------+
-          |               |
-          |     +---------+
-          |     |
- +--------v-----v----+
- |   Nginx Reverse   |
- |   Proxy + SSL     |
- |  (WebSocket)      |
- +-------------------+
+    +---------------+------------------+-----+------+------------------+---------------+
+    |               |                  |            |                  |               |
++---v----+      +---v----+     +-------v-------+  +-v-----------+  +---v-----------+  +----v-----------+
+| Jenkins|      |Jenkins |     |  SonarQube VM |  | Artifactory |  | PostgreSQL    |  | Azure Bastion  |
+|Controller     | Agent  |     |   (SAST)      |  | (Artifacts) |  | Flexible DB   |  | (Secure Access)|
++---+----+      +---+----+     +-------+-------+  +------+------+  +---------------+  +----------------+
+    |               |                  |                 |
+    |     +---------+                  |                 |
+    |     |                            |                 |
++---v-----v----+               +-------v-------+  +------v------+
+|   Nginx      |               |    Nginx      |  |   Nginx     |
+| Reverse Proxy|               | Reverse Proxy |  |Reverse Proxy|
+|  (WebSocket) |               |    (SSL)      |  |   (SSL)     |
++--------------+               +---------------+  +-------------+
 ```
 
 **Network Design:**
 - Jenkins Controller: Public IP with Nginx reverse proxy (HTTPS + WebSocket)
 - Jenkins Agents: Private subnet only, connect to controller via internal network
+- SonarQube: Public IP with Nginx reverse proxy (HTTPS)
+- Artifactory: Public IP with Nginx reverse proxy (HTTPS)
+- PostgreSQL: Private subnet with VNet integration (separate instances for SonarQube and Artifactory)
 - SSH access to agents: ProxyCommand through Jenkins Controller
 
 ## Current Tools
@@ -71,16 +74,16 @@ This DevSecOps infrastructure is designed to support the [CPTM8 project](https:/
 | Jenkins Controller | CI/CD automation server | Deployed |
 | Jenkins Agent | Build execution with Docker | Deployed |
 | SonarQube | Static Application Security Testing (SAST) | Deployed |
+| Artifactory | Universal artifact repository (Maven, npm, Docker, etc.) | Deployed |
 | Trivy | Container vulnerability scanning | Deployed (on agents) |
 | Docker | Container runtime on agents | Deployed |
 | Nginx | Reverse proxy with SSL + WebSocket | Deployed |
-| PostgreSQL | Database backend for SonarQube | Deployed |
+| PostgreSQL | Database backend for SonarQube and Artifactory | Deployed |
 
 ## Planned Tools
 
 | Tool | Purpose | Status |
 |------|---------|--------|
-| Artifactory | Artifact repository management | Planned |
 | Harbor | Container registry with security scanning | Planned |
 
 ## Project Structure
@@ -112,19 +115,24 @@ VulnMngm-Pipeline/
 ├── devops-ansible/                 # Ansible configuration management
 │   ├── inventory/
 │   │   ├── staging.ini             # Host inventory with ProxyCommand for agents
-│   │   └── group_vars/
-│   │       ├── jenkins_controllers.yml
-│   │       ├── jenkins_agents.yml  # Agent secrets (vault-encrypted)
-│   │       └── sonarqube_servers.yml
+│   │   ├── group_vars/
+│   │   │   ├── jenkins_controllers.yml
+│   │   │   ├── jenkins_agents.yml  # Agent secrets (vault-encrypted)
+│   │   │   ├── sonarqube_servers.yml
+│   │   │   └── artifactory_servers.yml
+│   │   └── host_vars/
+│   │       └── artifactory-staging.yml  # Per-host Artifactory config
 │   ├── playbooks/
 │   │   ├── site.yml                # Master playbook with tags
 │   │   ├── deploy_jenkins_controller.yml
 │   │   ├── deploy_jenkins_agent.yml
-│   │   └── deploy_sonarqube.yml
+│   │   ├── deploy_sonarqube.yml
+│   │   └── deploy_artifactory.yml  # Artifactory deployment
 │   └── roles/
 │       ├── jenkins/                # Jenkins Controller installation
 │       ├── jenkins_agent/          # Agent with Docker, Trivy, systemd service
 │       ├── sonarqube/              # SonarQube setup
+│       ├── artifactory/            # JFrog Artifactory Pro setup
 │       ├── nginx_reverse_proxy/    # SSL + WebSocket proxy
 │       └── security_baseline/      # OS hardening, fail2ban
 │
@@ -156,6 +164,8 @@ The Terraform modules follow a consistent interface pattern, allowing the same A
 - Fail2ban for intrusion prevention
 - Let's Encrypt SSL certificates via Certbot
 - Ansible Vault for secrets management
+- PostgreSQL Flexible Server with SSL/TLS encryption (private VNet access only)
+- Audit logging enabled for Artifactory
 
 ## Quick Start
 
@@ -193,6 +203,7 @@ ansible-playbook playbooks/site.yml
 ansible-playbook playbooks/site.yml --tags jenkins_controller
 ansible-playbook playbooks/site.yml --tags jenkins_agent
 ansible-playbook playbooks/site.yml --tags sonarqube
+ansible-playbook playbooks/site.yml --tags artifactory
 
 # Deploy all Jenkins components (controller + agents)
 ansible-playbook playbooks/site.yml --tags jenkins
@@ -201,6 +212,26 @@ ansible-playbook playbooks/site.yml --tags jenkins
 ## Documentation
 
 - [Ansible Configuration Guide](devops-ansible/README.md) - Detailed setup and usage instructions
+
+## Component Details
+
+### JFrog Artifactory
+
+Artifactory is deployed as a universal artifact repository supporting multiple package formats (Maven, npm, Docker, PyPI, etc.).
+
+**Configuration highlights:**
+- PostgreSQL backend with SSL encryption
+- Systemd service with optimized file descriptor limits
+- JVM tuning (2GB-4GB heap)
+- Nginx reverse proxy with HTTPS
+- Audit logging enabled
+
+**Post-deployment setup (via Web GUI):**
+1. Complete the setup wizard at `https://artifactory-domain`
+2. Configure repositories (local, remote, virtual)
+3. Set up users, groups, and permissions
+4. Configure LDAP/SSO if required
+5. Set up replication for HA (optional)
 
 ## Roadmap
 
@@ -212,7 +243,7 @@ ansible-playbook playbooks/site.yml --tags jenkins
 ### Security Tools
 - [x] Trivy installed on Jenkins agents for container scanning
 - [ ] Trivy integration in Jenkins pipelines
-- [ ] Artifactory deployment for artifact management
+- [x] Artifactory deployment for artifact management
 - [ ] Harbor registry with Trivy scanner integration
 
 ### Monitoring & Observability
