@@ -214,9 +214,10 @@ def call(Closure configClosure) {
       }
 
       // Create PR to publish binary to compose-stack GITLAB repository
-      stage("Publish binary to compose-stack ${config.scmProvider}") {
+      stage("Publish binary to compose-stack") {
         when { expression { config.publishBinary } }
         steps {
+          echo "Working in ${config.scmProvider}"
           script {
             provider.publishBinary(config)
           }
