@@ -1,6 +1,6 @@
 package com.deifzar.ci
 
-class SASTtage implements Serializable {
+class SASTStage implements Serializable {
     def steps
     
     SASTStage(steps) { this.steps = steps}
