@@ -8,6 +8,7 @@ This project showcases proficiency in building production-ready DevOps infrastru
 
 - **Infrastructure Provisioning**: Terraform modules with cloud-agnostic design patterns
 - **Configuration Management**: Ansible roles for application deployment and hardening
+- **CI/CD Pipelines**: Jenkins Shared Libraries with integrated security scanning (SAST, SCA, SBOM)
 - **Security-First Design**: Network segmentation, encryption, and security baselines
 - **Multi-Cloud Strategy**: Designed to be portable across Azure and AWS
 
@@ -73,9 +74,10 @@ This DevSecOps infrastructure is designed to support the [CPTM8 project](https:/
 |------|---------|--------|
 | Jenkins Controller | CI/CD automation server | Deployed |
 | Jenkins Agent | Build execution with Docker | Deployed |
+| Jenkins Shared Library | Reusable pipeline templates for microservices | Implemented |
 | SonarQube | Static Application Security Testing (SAST) | Deployed |
 | Artifactory | Universal artifact repository (Maven, npm, Docker, etc.) | Deployed |
-| Trivy | Container vulnerability scanning | Deployed (on agents) |
+| Trivy | Container/source/IaC vulnerability scanning | Deployed (on agents) |
 | Docker | Container runtime on agents | Deployed |
 | Nginx | Reverse proxy with SSL + WebSocket | Deployed |
 | PostgreSQL | Database backend for SonarQube and Artifactory | Deployed |
@@ -135,6 +137,22 @@ VulnMngm-Pipeline/
 │       ├── artifactory/            # JFrog Artifactory Pro setup
 │       ├── nginx_reverse_proxy/    # SSL + WebSocket proxy
 │       └── security_baseline/      # OS hardening, fail2ban
+│
+├── devops-jenkins-pipeline-libraries/  # Jenkins Shared Libraries (Groovy)
+│   └── microservices-lib/
+│       ├── vars/
+│       │   └── servicePipeline.groovy  # Main pipeline entry point
+│       └── src/com/deifzar/ci/
+│           ├── BuildStage.groovy       # Go binary & Docker build
+│           ├── TestStage.groovy        # Unit testing
+│           ├── SASTStage.groovy        # SonarQube integration
+│           ├── SCAStage.groovy         # Trivy scanning (source, image, IaC)
+│           ├── SBOMStage.groovy        # SBOM export (CycloneDX, SPDX)
+│           ├── Docker.groovy           # Docker operations
+│           ├── PublishStage.groovy     # Artifact publishing
+│           └── providers/
+│               ├── GitHubProvider.groovy
+│               └── GitLabProvider.groovy
 │
 └── README.md
 ```
@@ -215,6 +233,47 @@ ansible-playbook playbooks/site.yml --tags jenkins
 
 ## Component Details
 
+### Jenkins Shared Library
+
+A reusable Jenkins Shared Library for microservices CI/CD pipelines with integrated security scanning.
+
+**Location:** `devops-jenkins-pipeline-libraries/microservices-lib/`
+
+**Pipeline Stages:**
+```
+Checkout → Build Go Binary → Test → SAST → Build Docker → SCA → SBOM → Publish
+```
+
+**Security Features:**
+| Stage | Tool | Description |
+|-------|------|-------------|
+| SAST | SonarQube | Static code analysis with quality gates |
+| SCA (Source) | Trivy | Vulnerability scan of source code dependencies |
+| SCA (Image) | Trivy | Container image vulnerability scanning |
+| SCA (IaC) | Trivy | Infrastructure-as-Code misconfiguration detection |
+| SBOM | Trivy | Software Bill of Materials (CycloneDX & SPDX formats) |
+
+**Supported SCM Providers:**
+- GitHub (with GHCR registry)
+- GitLab (with GitLab Container Registry)
+
+**Usage Example (Jenkinsfile):**
+```groovy
+@Library('microservices-lib') _
+
+servicePipeline {
+    scmProvider           = 'github'
+    serviceName           = 'my-service'
+    gitCredentialsId      = 'github-credentials'
+    runTests              = true
+    runSASTScan           = true
+    sonarqubeUrl          = 'https://sonarqube.example.com'
+    sonarqubeCredentialsId = 'sonarqube-token'
+    runTrivyImageScan     = true
+    trivySeverity         = 'HIGH,CRITICAL'
+}
+```
+
 ### JFrog Artifactory
 
 Artifactory is deployed as a universal artifact repository supporting multiple package formats (Maven, npm, Docker, PyPI, etc.).
@@ -242,7 +301,8 @@ Artifactory is deployed as a universal artifact repository supporting multiple p
 
 ### Security Tools
 - [x] Trivy installed on Jenkins agents for container scanning
-- [ ] Trivy integration in Jenkins pipelines
+- [x] Trivy integration in Jenkins pipelines (source, image, IaC scanning)
+- [x] SBOM generation (CycloneDX & SPDX formats)
 - [x] Artifactory deployment for artifact management
 - [ ] Harbor registry with Trivy scanner integration
 
@@ -251,8 +311,8 @@ Artifactory is deployed as a universal artifact repository supporting multiple p
 - [ ] Security dashboards and alerting
 
 ### CPTM8 Integration
-- [ ] Jenkins pipeline templates for CPTM8 repositories
-- [ ] SonarQube quality gates configuration
+- [x] Jenkins pipeline templates for CPTM8 repositories (microservices-lib)
+- [x] SonarQube quality gates configuration (integrated in pipeline)
 - [ ] GitOps workflow with ArgoCD
 
 ## License
