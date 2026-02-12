@@ -6,7 +6,7 @@ class SASTStage implements Serializable {
     SASTStage(steps) { this.steps = steps}
 
     void runSonarqube (Map config) {
-        steps.withCredentials([string(credentialsId: config.sonarqubeCredentialsId, variable: 'SONAR_TOKEN')]) {
+        steps.withCredentials([steps.string(credentialsId: config.sonarqubeCredentialsId, variable: 'SONAR_TOKEN')]) {
             steps.sh """
                 echo "Running SonarQube SAST scan."
 

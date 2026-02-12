@@ -8,7 +8,7 @@ class GitHubProvider implements Serializable {
   void publishBinary(Map config) {
     def branchName = "update-${config.serviceName}-build-${env.BUILD_NUMBER}"
     
-    steps.withCredentials([gitUsernamePassword(credentialsId: config.gitCredentialsId)]) {
+    steps.withCredentials([steps.gitUsernamePassword(credentialsId: config.gitCredentialsId)]) {
 
       steps.sh """
         # Set GH_TOKEN for GitHub CLI authentication
