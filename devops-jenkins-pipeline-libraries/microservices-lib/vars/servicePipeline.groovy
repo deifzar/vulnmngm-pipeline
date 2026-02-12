@@ -1,7 +1,6 @@
 import com.deifzar.ci.providers.GitHubProvider
 import com.deifzar.ci.providers.GitLabProvider
 import com.deifzar.ci.BuildStage
-import com.deifzar.ci.PublishStage
 import com.deifzar.ci.SASTStage
 import com.deifzar.ci.SCAStage
 import com.deifzar.ci.SBOMStage
