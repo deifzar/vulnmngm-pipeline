@@ -13,7 +13,7 @@ output "bastion_fqdn" {
   value       = var.enable_bastion ? module.bastion[0].bastion_dns_name : null
 }
 
-# Jenkins Node and Agent VM details
+# Jenkins Controller and Agent VM details
 output "jenkins_controller_vm" {
   description = "Jenkins Controller VM connection details"
   value = {
@@ -34,7 +34,7 @@ output "jenkins_agent_vm_details" {
   }
 }
 
-# SonarQube VM details
+# # SonarQube VM details
 output "sonarqube_vm_details" {
   description = "SonarQube VM connection details"
   value = {
@@ -42,6 +42,17 @@ output "sonarqube_vm_details" {
     private_ip = module.sonarqube_vm.private_ip_address
     public_ip  = module.sonarqube_vm.public_ip_address
     fqdn       = module.sonarqube_vm.public_ip_fqdn
+  }
+}
+
+# SonarArtifactoryQube VM details
+output "artifactory_vm_details" {
+  description = "Artifactory VM connection details"
+  value = {
+    vm_name    = module.artifactory_vm.vm_name
+    private_ip = module.artifactory_vm.private_ip_address
+    public_ip  = module.artifactory_vm.public_ip_address
+    fqdn       = module.artifactory_vm.public_ip_fqdn
   }
 }
 
