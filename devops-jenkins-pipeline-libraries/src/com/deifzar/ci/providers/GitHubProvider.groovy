@@ -5,7 +5,10 @@ class GitHubProvider implements Serializable {
   
   GitHubProvider(steps) { this.steps = steps }
   
-  void publishBinary(Map config) {
+  /*
+  create PR
+  */
+  void createRequest(Map config) {
     def branchName = "update-${config.serviceName}-build-${env.BUILD_NUMBER}"
     
     steps.withCredentials([steps.gitUsernamePassword(credentialsId: config.gitCredentialsId)]) {

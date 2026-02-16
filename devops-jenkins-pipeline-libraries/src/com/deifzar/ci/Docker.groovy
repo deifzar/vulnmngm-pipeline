@@ -8,10 +8,9 @@ class Docker implements Serializable {
     this.steps = steps
   }
 
-  void build(String service, String dockerfile, String registry) {
+  void build(String service, String registry) {
     steps.sh """
       docker build \
-        -f ${dockerfile} \
         -t ${registry}/${service}:${steps.env.BUILD_NUMBER} .
     """
   }
@@ -75,7 +74,7 @@ def call(Closure configClosure) {
             def dockerHelper = new Docker(this)
             
             // Use the helper methods
-            dockerHelper.build(config.serviceName, config.dockerfile, config.imageRegistry)
+            dockerHelper.build(config.serviceName, config.imageRegistry)
           }
         }
       }

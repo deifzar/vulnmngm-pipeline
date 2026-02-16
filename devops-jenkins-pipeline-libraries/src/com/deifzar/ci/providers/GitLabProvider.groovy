@@ -5,7 +5,10 @@ class GitLabProvider implements Serializable {
   
   GitLabProvider(steps) { this.steps = steps }
   
-  void publishBinary(Map config) {
+  /*
+  create MR
+  */
+  void createRequest(Map config) {
     def branchName = "update-${config.serviceName}-build-${env.BUILD_NUMBER}"
     
     steps.withCredentials([steps.usernamePassword(
