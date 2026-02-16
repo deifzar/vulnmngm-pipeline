@@ -226,6 +226,7 @@ def call(Closure configClosure) {
         parallel {
           stage ('Trivy') {
             steps {
+              echo 'Trivy SBOM'
               script {
                 sbomHelper.exportSourceCodeSPDXWithTrivy(config)
                 sbomHelper.exportSourceCodeCyclonDXWithTrivy(config)
@@ -245,8 +246,8 @@ def call(Closure configClosure) {
               }
             }
             steps {
+              echo 'Snyk SBOM (needs an enterprise account)'
               script {
-                // Snyk requires enterprise account
                 // sbomHelper.exportSourceCodeJSONWithSnyk(config)
                 // sbomHelper.exportSourceCodeJSONWithSnyk(config)
                 // sbomHelper.exportSourceCodeSARIFWithSnyk(config)
