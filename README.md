@@ -139,20 +139,21 @@ VulnMngm-Pipeline/
 │       └── security_baseline/      # OS hardening, fail2ban
 │
 ├── devops-jenkins-pipeline-libraries/  # Jenkins Shared Libraries (Groovy)
-│   └── microservices-lib/
-│       ├── vars/
-│       │   └── servicePipeline.groovy  # Main pipeline entry point
-│       └── src/com/deifzar/ci/
-│           ├── BuildStage.groovy       # Go binary & Docker build
-│           ├── TestStage.groovy        # Unit testing
-│           ├── SASTStage.groovy        # SonarQube integration
-│           ├── SCAStage.groovy         # Trivy scanning (source, image, IaC)
-│           ├── SBOMStage.groovy        # SBOM export (CycloneDX, SPDX)
-│           ├── Docker.groovy           # Docker operations
-│           ├── PublishStage.groovy     # Artifact publishing
-│           └── providers/
-│               ├── GitHubProvider.groovy
-│               └── GitLabProvider.groovy
+|   ├── src/com/deifzar/ci/
+|   │   ├── BuildStage.groovy      # Multi-language build methods
+|   │   ├── TestStage.groovy       # Multi-language test methods
+|   │   ├── SASTStage.groovy       # SonarQube: CLI, Gradle, Maven
+|   │   ├── SCAStage.groovy        # Trivy & Snyk scanning
+|   │   ├── SBOMStage.groovy       # SBOM generation
+|   │   ├── Docker.groovy          # Docker operations
+|   |   ├── PublishStage.groovy    # Artifact publishing
+|   │   └── providers/
+|   │       ├── GitHubProvider.groovy
+|   │       └── GitLabProvider.groovy
+|   └── vars/
+|       ├── golangPipeline.groovy
+|       ├── gradlePipeline.groovy
+|       └── mavenPipeline.groovy
 │
 └── README.md
 ```
