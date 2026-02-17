@@ -213,12 +213,12 @@ def call(Closure configClosure) {
             }
             steps {
               echo 'Snyk SBOM (needs an enterprise account)'
-              script {
-                // Snyk requires enterprise account
-                // sbomHelper.exportSourceCodeJSONWithSnyk(config)
-                // sbomHelper.exportSourceCodeJSONWithSnyk(config)
-                // sbomHelper.exportSourceCodeSARIFWithSnyk(config)
-              }
+              // script {
+              //   // Snyk requires enterprise account
+              //   // sbomHelper.exportSourceCodeJSONWithSnyk(config)
+              //   // sbomHelper.exportSourceCodeJSONWithSnyk(config)
+              //   // sbomHelper.exportSourceCodeSARIFWithSnyk(config)
+              // }
             }
           }
         }
