@@ -23,20 +23,20 @@ class Docker implements Serializable {
     steps.sh """
       echo "Extracting binary from image: ${image}"
 
-              container_id=\$(docker create ${image})
-              echo "Created container: \$container_id"
+      container_id=\$(docker create ${image})
+      echo "Created container: \$container_id"
 
-              # Copy binary out
-              mkdir -p ./bin
-              docker cp "\$container_id:${location}" "./bin"
-              echo "Copied binary to ./bin"
+      # Copy binary out
+      mkdir -p ./bin
+      docker cp "\$container_id:${location}" "./bin"
+      echo "Copied binary to ./bin"
 
-              # Check bin directory content
-              ls -lha bin
+      # Check bin directory content
+      ls -lha bin
 
-              # Cleanup
-              docker rm \$container_id
-              echo "Removed container: \$container_id"
+      # Cleanup
+      docker rm \$container_id
+      echo "Removed container: \$container_id"
     """
   }
 
