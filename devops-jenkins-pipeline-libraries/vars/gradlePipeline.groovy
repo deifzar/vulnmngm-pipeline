@@ -88,9 +88,10 @@ def call(Closure configClosure) {
       SONARQUBE_CLI = 'sonarsource/sonar-scanner-cli:12.0'
     }
 
-    tools {
-      jdk 'jdk-21' //jdk-17
-    }
+    // tools block not needed - Docker images include JDK
+    // tools {
+    //   jdk 'jdk-21'
+    // }
 
     stages {
       stage('Checkout') {
@@ -209,14 +210,15 @@ def call(Closure configClosure) {
                 args "-e GRADLE_USER_HOME=${WORKSPACE}/.gradle"
               }
             }
-            steps {
-              script {
-                // Snyk requires enterprise account
-                // sbomHelper.exportSourceCodeJSONWithSnyk(config)
-                // sbomHelper.exportSourceCodeJSONWithSnyk(config)
-                // sbomHelper.exportSourceCodeSARIFWithSnyk(config)
-              }
-            }
+            echo 'Snyk SBOM (needs an enterprise account)'
+            // steps {
+            //   script {
+            //     // Snyk requires enterprise account
+            //     // sbomHelper.exportSourceCodeJSONWithSnyk(config)
+            //     // sbomHelper.exportSourceCodeJSONWithSnyk(config)
+            //     // sbomHelper.exportSourceCodeSARIFWithSnyk(config)
+            //   }
+            // }
           }
         }
       } //SBOM

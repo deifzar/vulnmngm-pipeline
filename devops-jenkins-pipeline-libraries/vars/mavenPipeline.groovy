@@ -89,9 +89,10 @@ def call(Closure configClosure) {
       SONARQUBE_CLI = 'sonarsource/sonar-scanner-cli:12.0'
     }
 
-    tools {
-      jdk 'jdk-21' //jdk-17
-    }
+    // tools block not needed - Docker images include JDK
+    // tools {
+    //   jdk 'jdk-21'
+    // }
 
     stages {
       stage('Checkout') {
