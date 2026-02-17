@@ -103,13 +103,14 @@ class SCAStage implements Serializable {
             steps.sh """
                 echo "Running Snyk SCA scan"
 
-                # Human-readable console output - High risk threshold
+                # JSON output for archiving
                 snyk test ${skipDirsArg} ${skipFilesArg} \\
-                --severity-threshold=high \\
-                --json-file-output=snyk-sourcecode-${config.repoName}.json
-                || true
+                    --severity-threshold=high \\
+                    --json-file-output=snyk-sourcecode-${config.repoName}.json \\
+                    || true
 
-                snyk test --severity-threshold=high
+                # Human-readable console output
+                snyk test --severity-threshold=high || true
             """
             // The || true prevents pipeline failure on vulnerabilities found (exit code 1). Remove it if you want the build to fail.
         }
