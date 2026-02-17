@@ -37,6 +37,7 @@ def call(Closure configClosure) {
     // SonarQube config
     sonarqubeCredentialsId    : null,  // Jenkins credentials ID for SonarQube token
     sonarqubeUrl              : null,  // SonarQube server URL (e.g., 'https://sonar.example.com')
+    sonarqubeProjectKey       : null
   ]
 
   configClosure.resolveStrategy = Closure.DELEGATE_FIRST
@@ -51,7 +52,7 @@ def call(Closure configClosure) {
     error 'repoName or gitCredentialsId must be defined'
   }
 
-  if (config.runSAST && (!config.sonarqubeUrl || !config.sonarqubeCredentialsId) ) {
+  if (config.runSAST && (!config.sonarqubeUrl || !config.sonarqubeCredentialsId || !config.sonarqubeProjectKey) ) {
     error 'sonarqube config variables must be defined'
   }
 
