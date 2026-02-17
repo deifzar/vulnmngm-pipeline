@@ -105,7 +105,7 @@ def call(Closure configClosure) {
           docker {
             image config.buildingImage
             reuseNode true  // Use same workspace. Important! Otherwise, files would not be shared
-            args "-e GRADLE_USER_HOME=${WORKSPACE}/.gradle" // Point Gradlew to write inside the workspace where we have permissions
+            args '-e GRADLE_USER_HOME=${WORKSPACE}/.gradle' // Point Gradlew to write inside the workspace where we have permissions
           }
         }
         steps {
@@ -121,7 +121,7 @@ def call(Closure configClosure) {
           docker {
             image config.buildingImage
             reuseNode true
-            args "-e GRADLE_USER_HOME=${WORKSPACE}/.gradle"
+            args '-e GRADLE_USER_HOME=${WORKSPACE}/.gradle'
           }
         }
         steps {
@@ -144,7 +144,7 @@ def call(Closure configClosure) {
           docker {
             image config.buildingImage
             reuseNode true
-            args "-e GRADLE_USER_HOME=${WORKSPACE}/.gradle"
+            args '-e GRADLE_USER_HOME=${WORKSPACE}/.gradle'
           }
         }
 
@@ -174,7 +174,7 @@ def call(Closure configClosure) {
               docker {
                 image "snyk/snyk:gradle"
                 reuseNode true
-                args "-e GRADLE_USER_HOME=${WORKSPACE}/.gradle"
+                args '-e GRADLE_USER_HOME=${WORKSPACE}/.gradle'
               }
             }
             steps {
@@ -207,7 +207,7 @@ def call(Closure configClosure) {
               docker {
                 image "snyk/snyk:gradle"
                 reuseNode true
-                args "-e GRADLE_USER_HOME=${WORKSPACE}/.gradle"
+                args '-e GRADLE_USER_HOME=${WORKSPACE}/.gradle'
               }
             }
             echo 'Snyk SBOM (needs an enterprise account)'

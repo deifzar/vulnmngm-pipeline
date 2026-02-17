@@ -106,7 +106,7 @@ def call(Closure configClosure) {
           docker {
             image config.buildingImage
             reuseNode true  // Use same workspace. Important! Otherwise, files would not be shared
-            args "-e MAVEN_CONFIG=${WORKSPACE}/.m2 -e MAVEN_OPTS='-Dmaven.repo.local=${WORKSPACE}/.m2/repository'" // Point Gradlew to write inside the workspace where we have permissions
+            args '-e MAVEN_CONFIG=${WORKSPACE}/.m2 -e MAVEN_OPTS=-Dmaven.repo.local=${WORKSPACE}/.m2/repository' // Point Maven to write inside the workspace where we have permissions
           }
         }
         steps {
@@ -122,7 +122,7 @@ def call(Closure configClosure) {
           docker {
             image config.buildingImage
             reuseNode true
-            args "-e MAVEN_CONFIG=${WORKSPACE}/.m2 -e MAVEN_OPTS='-Dmaven.repo.local=${WORKSPACE}/.m2/repository'"
+            args '-e MAVEN_CONFIG=${WORKSPACE}/.m2 -e MAVEN_OPTS=-Dmaven.repo.local=${WORKSPACE}/.m2/repository'
           }
         }
         steps {
@@ -145,7 +145,7 @@ def call(Closure configClosure) {
           docker {
             image config.buildingImage
             reuseNode true
-            args "-e MAVEN_CONFIG=${WORKSPACE}/.m2 -e MAVEN_OPTS='-Dmaven.repo.local=${WORKSPACE}/.m2/repository'"
+            args '-e MAVEN_CONFIG=${WORKSPACE}/.m2 -e MAVEN_OPTS=-Dmaven.repo.local=${WORKSPACE}/.m2/repository'
           }
         }
 
@@ -175,7 +175,7 @@ def call(Closure configClosure) {
               docker {
                 image "snyk/snyk:maven"
                 reuseNode true
-                args "-e MAVEN_CONFIG=${WORKSPACE}/.m2 -e MAVEN_OPTS='-Dmaven.repo.local=${WORKSPACE}/.m2/repository'"
+                args '-e MAVEN_CONFIG=${WORKSPACE}/.m2 -e MAVEN_OPTS=-Dmaven.repo.local=${WORKSPACE}/.m2/repository'
               }
             }
             steps {
@@ -208,7 +208,7 @@ def call(Closure configClosure) {
               docker {
                 image "snyk/snyk:maven"
                 reuseNode true
-                args "-e MAVEN_CONFIG=${WORKSPACE}/.m2 -e MAVEN_OPTS='-Dmaven.repo.local=${WORKSPACE}/.m2/repository'"
+                args '-e MAVEN_CONFIG=${WORKSPACE}/.m2 -e MAVEN_OPTS=-Dmaven.repo.local=${WORKSPACE}/.m2/repository'
               }
             }
             steps {
