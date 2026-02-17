@@ -138,13 +138,14 @@ def call(Closure configClosure) {
       }
 
       // SAST - Static Application Security Testing with SonarQube
+      // SonarQube scanner for writing to its cache directory for plugins: -e SONAR_USER_HOME=${WORKSPACE}/.sonar
       stage('SAST') {
         when { expression { config.runSAST } }
         agent {
           docker {
             image config.buildingImage
             reuseNode true
-            args '-e GRADLE_USER_HOME=${WORKSPACE}/.gradle'
+            args '-e GRADLE_USER_HOME=${WORKSPACE}/.gradle -e SONAR_USER_HOME=${WORKSPACE}/.sonar'
           }
         }
 
