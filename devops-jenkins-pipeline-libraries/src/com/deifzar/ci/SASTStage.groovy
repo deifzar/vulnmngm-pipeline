@@ -75,7 +75,8 @@ class SASTStage implements Serializable {
             mvn sonar:sonar \\
                 -Dsonar.token=\$SONAR_TOKEN \\
                 -Dsonar.host.url=${config.sonarqubeUrl} \\
-                -Dsonar.qualitygate.wait=true
+                -Dsonar.qualitygate.wait=true \\
+                -Dsonar.projectKey=${config.sonarqubeProjectKey}
         """
         }
     }
