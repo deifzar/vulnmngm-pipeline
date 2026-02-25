@@ -106,7 +106,7 @@ class SCAStage implements Serializable {
                 echo "Running Snyk SCA scan"
 
                 # JSON output for archiving
-                snyk test 
+                snyk test \\
                     --exclude ${excludeArg} \\
                     --severity-threshold=${config.snykThreshold} \\
                     --json-file-output=sca-snyk-${config.repoName}-${config.environment}-${steps.env.BUILD_NUMBER}-sourcecode.json \\
