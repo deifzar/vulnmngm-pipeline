@@ -31,7 +31,7 @@ def call(Closure configClosure) {
     trivySkipDirs             : [],     // List of directories to skip in Trivy SCA scan
     trivySkipFiles            : [],     // List of files to skip in Trivy SCA scan
     // snyk settings
-    snykThreshold             : 'high'  // single string: critical, high, medium, low
+    snykThreshold             : 'high',  // single string: critical, high, medium, low
     snykSkipDirsOrFiles       : [],     // List of directories or files to skip in Snyk SCA scan
 
     // Binary publishing config
