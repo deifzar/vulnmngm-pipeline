@@ -15,7 +15,7 @@ class SBOMStage implements Serializable {
 
             trivy fs ${skipDirsArg} \\
                 --format cyclonedx \\
-                --output sbom-sourcecode-${config.repoName}.trivy.cdx.json \\
+                --output sbom-trivy-${config.repoName}-${config.environment}-${steps.env.BUILD_NUMBER}-sourcecode.trivy.cdx.json \\
                 .
             """
     }
@@ -27,7 +27,7 @@ class SBOMStage implements Serializable {
 
             trivy fs ${skipDirsArg} \\
                 --format spdx-json \\
-                --output sbom-sourcecode-${config.repoName}.trivy.spdx.json \\
+                --output sbom-trivy-${config.repoName}-${config.environment}-${steps.env.BUILD_NUMBER}-sourcecode.trivy.spdx.json \\
                 .
             """
     }
@@ -39,7 +39,7 @@ class SBOMStage implements Serializable {
 
             trivy image  ${skipDirsArg} \\
                 --format cyclonedx \\
-                --output sbom-image-${config.repoName}.trivy.cdx.json \\
+                --output sbom-trivy-${config.repoName}-${config.environment}-${steps.env.BUILD_NUMBER}-image.trivy.cdx.json \\
                 ${steps.env.IMAGE_TAG}
             """
     }
@@ -49,41 +49,41 @@ class SBOMStage implements Serializable {
             echo "Export SPDX format (alternative) with Trivy and Docker image"
             trivy image \\
                 --format spdx-json \\
-                --output sbom-image-${config.repoName}.trivy.spdx.json \\
+                --output sbom-trivy-${config.repoName}-${config.environment}-${steps.env.BUILD_NUMBER}-image.trivy.spdx.json \\
                 ${steps.env.IMAGE_TAG}
             """
     }
 
     void exportSourceCodeJSONWithSnyk (Map config) {
-        def skipDirsArg = config.environment == 'prod' ? "--skip-dirs src/test" : ''
+        def excludeArg = config.environment == 'prod' ? "${config.snykSkipDirsOrFiles.join(',')}" : ''
         steps.sh """
             echo "Export JSON format with Snyk"
-            snyk sbom ${skipDirsArg} \\
-                --severity-threshold=high \\
-                --json-file-output=sbom-sourcecode-${config.repoName}.snyk.json \\
-                --sarif-file-output=sbom-sourcecode-${config.repoName}.snyk.sarif.json \\
+            snyk sbom --exclude ${excludeArg} \\
+                --severity-threshold=${config.snykThreshold} \\
+                --json-file-output=sbom-snyk-${config.repoName}-${config.environment}-${steps.env.BUILD_NUMBER}-sourcecode.snyk.json \\
+                --sarif-file-output=sbom-snyk-${config.repoName}-${config.environment}-${steps.env.BUILD_NUMBER}-sourcecode.snyk.sarif.json \\
                 || true
             """
     }
 
     void exportSourceCodeCyclonDXWithSnyk (Map config) {
-        def skipDirsArg = config.environment == 'prod' ? "--skip-dirs src/test" : ''
+        def excludeArg = config.environment == 'prod' ? "${config.snykSkipDirsOrFiles.join(',')}" : ''
         steps.withCredentials([steps.string(credentialsId: config.snykCredentialsId, variable: 'SNYK_TOKEN')]) {
             steps.sh """
-                snyk sbom ${skipDirsArg} \\
+                snyk sbom --exclude ${excludeArg} \\
                 --format=cyclonedx1.6+xml \\
-                --json-file-output sbom-sourcecode-${config.repoName}.snyk.cdx.json
+                --json-file-output sbom-snyk-${config.repoName}-${config.environment}-${steps.env.BUILD_NUMBER}-sourcecode.snyk.cdx.json
             """
         }
     }
 
     void exportSourceCodeSPDXWithSnyk (Map config) {
-        def skipDirsArg = config.environment == 'prod' ? "--skip-dirs src/test" : ''
+        def excludeArg = config.environment == 'prod' ? "${config.snykSkipDirsOrFiles.join(',')}" : ''
         steps.withCredentials([steps.string(credentialsId: config.snykCredentialsId, variable: 'SNYK_TOKEN')]) {
             steps.sh """
-                snyk sbom ${skipDirsArg} \\
+                snyk sbom --exclude ${excludeArg} \\
                 --format spdx2.3+json \\
-                --json-file-output sbom-sourcecode-${config.repoName}.snyk.spdx.json
+                --json-file-output sbom-snyk-${config.repoName}-${config.environment}-${steps.env.BUILD_NUMBER}-sourcecode-.snyk.spdx.json
             """
         }
     }

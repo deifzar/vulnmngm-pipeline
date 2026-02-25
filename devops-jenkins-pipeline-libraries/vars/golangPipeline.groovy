@@ -6,6 +6,7 @@ import com.deifzar.ci.SCAStage
 import com.deifzar.ci.SBOMStage
 import com.deifzar.ci.TestStage
 import com.deifzar.ci.Docker
+import com.deifzar.ci.Artifactory
 
 def call(Closure configClosure) {
   def config = [
@@ -17,22 +18,22 @@ def call(Closure configClosure) {
     runSAST                   : false, // Sonarqube
     runSCA                    : false,
     runSBOM                   : true,
-    runDeployment             : false,
+    runPublish                : false, // Artifactory
 
     buildingImage                : 'golang:1.23',
-    
+
     // runTrivySourceScan        : false,
     // runTrivyImageScan         : true,   // Trivy image scan (enabled by default)
     // runTrivyIaCScan           : false,
 
-    scaSeverity             : 'HIGH,CRITICAL',
-    // trivy settings    
+    // trivy settings
+    trivyThreshold            : 'HIGH,CRITICAL', // strings with comma: CRITICAL,HIGH,MEDIUM,LOW
     trivySkipDirs             : [],     // List of directories to skip in Trivy SCA scan
     trivySkipFiles            : [],     // List of files to skip in Trivy SCA scan
     // snyk settings
-    snykSkipDirs              : [],     // List of directories to skip in Snyk SCA scan
-    snykSkipFiles             : [],     // List of files to skip in Snyk SCA scan
-    
+    snykThreshold             : 'high'  // single string: critical, high, medium, low
+    snykSkipDirsOrFiles       : [],     // List of directories or files to skip in Snyk SCA scan
+
     // Binary publishing config
     createPullOrMergeRequest  : true,
     composeStackRepo          : null, // 'gitlab.com/cptm8microservices/cptm8-compose-stack.git' || github.com/deifzar/cptm8-compose-stack.git
@@ -43,6 +44,11 @@ def call(Closure configClosure) {
     // SonarQube config
     sonarqubeCredentialsId    : null,  // Jenkins credentials ID for SonarQube token
     sonarqubeUrl              : null,  // SonarQube server URL (e.g., 'https://sonar.example.com')
+    // Artifactory config
+    artifactoryCredentialsId  : null,  // Jenkins credentials ID for Artifactory token 
+    artifactoryUrl            : null,
+    artifactoryGenericRepo    : null,  // e.g., 'cptm8-generic'
+    artifactoryDockerRepo     : null,  // e.g., 'cptm8-docker'
   ]
 
   configClosure.resolveStrategy = Closure.DELEGATE_FIRST
@@ -61,24 +67,28 @@ def call(Closure configClosure) {
     error 'sonarqube config variables must be defined'
   }
 
+  if (config.runPublish && (!config.artifactoryUrl || !config.artifactoryCredentialsId || !config.artifactoryRepoPath) ) {
+    error 'artifactory config variables must be defined'
+  }
+
   def imageRegistry = null
   if (config.scmProvider == 'github') {
     imageRegistry = 'ghcr.io/deifzar'
   } else {
     imageRegistry = 'registry.gitlab.com/mygroup'
   }
-  
-  def provider = config.scmProvider == 'github' 
-    ? new GitHubProvider(this) 
+
+  def provider = config.scmProvider == 'github'
+    ? new GitHubProvider(this)
     : new GitLabProvider(this)
 
-  
   def buildHelper = new BuildStage(this)
   def testHelper = new TestStage(this)
   def sastHelper = new SASTStage(this)
   def scaHelper = new SCAStage(this)
   def sbomHelper = new SBOMStage(this)
   def dockerHelper = new Docker(this)
+  def artifactoryHelper = new Artifactory(this)
 
   pipeline {
     agent any  // Base agent with Docker, Git, Trivy
@@ -94,6 +104,11 @@ def call(Closure configClosure) {
       SONARQUBE_CLI = 'sonarsource/sonar-scanner-cli:12.0'
     }
 
+    // parameters {
+    //     string(name: 'BUILD_NUMBER_TO_PROMOTE', description: 'Build number to promote')
+    //     choice(name: 'TARGET_REPO', choices: ['libs-staging-local', 'libs-release-local'], description: 'Target repository')
+    // }
+
     stages {
       stage('Checkout') {
         steps {
@@ -103,7 +118,7 @@ def call(Closure configClosure) {
 
       stage('Build') {
         parallel {
-          stage ('Builing Go Binary') {
+          stage('Building Go Binary') {
             // Behind the scenes, Jenkins does:
             // docker run \
             // -v /home/jenkins/workspace/job-name:/home/jenkins/workspace/job-name \
@@ -123,15 +138,16 @@ def call(Closure configClosure) {
               }
             }
           }
-          stage ('Building Docker Microservice') {
+          stage('Building Docker Microservice') {
             steps {
               script {
                 buildHelper.buildDocker(config)
+                echo "Extracting binary `${config.repoName}` from Docker image"
+                dockerHelper.getBinary(IMAGE_TAG, "/usr/local/bin/${config.repoName}")
               }
             }
           }
         } // parallel
-        
       } // Build
 
       stage('Test') {
@@ -170,7 +186,7 @@ def call(Closure configClosure) {
 
       // Software Composition Analysis
       stage('SCA') {
-        when { expression { config.runSCA} }
+        when { expression { config.runSCA } }
         parallel {
           stage('Scan Source Code with Trivy') {
             steps {
@@ -205,7 +221,7 @@ def call(Closure configClosure) {
           stage('Scan Source Code with Snyk') {
             agent {
               docker {
-                image "snyk/snyk:golang"
+                image 'snyk/snyk:golang'
                 reuseNode true
                 args '-e GOCACHE=/tmp/go-cache -e GOPATH=${WORKSPACE}/.go'
               }
@@ -217,66 +233,72 @@ def call(Closure configClosure) {
               }
             }
           }
-
         } //parallel
       } // SCA
 
       stage('SBOM') {
         when { expression { config.runSBOM } }
         parallel {
-          stage ('Trivy') {
+          stage('Trivy') {
             steps {
               echo 'Trivy SBOM'
               script {
                 sbomHelper.exportSourceCodeSPDXWithTrivy(config)
                 sbomHelper.exportSourceCodeCyclonDXWithTrivy(config)
-                // Snyk needs entripise account
-                // sbomHelper.exportSourceCodeJSONWithSnyk(config)
-                // sbomHelper.exportSourceCodeJSONWithSnyk(config)
-                // sbomHelper.exportSourceCodeSARIFWithSnyk(config)
+              // Snyk needs entripise account
+              // sbomHelper.exportSourceCodeJSONWithSnyk(config)
+              // sbomHelper.exportSourceCodeJSONWithSnyk(config)
+              // sbomHelper.exportSourceCodeSARIFWithSnyk(config)
               }
             }
           }
-          stage ('Snyk') {
+          stage('Snyk') {
             agent {
               docker {
-                image "snyk/snyk:golang"
+                image 'snyk/snyk:golang'
                 reuseNode true
                 args '-e GOCACHE=/tmp/go-cache -e GOPATH=${WORKSPACE}/.go'
               }
             }
             steps {
               echo 'Snyk SBOM (needs an enterprise account)'
-              // script {
-              //   sbomHelper.exportSourceCodeJSONWithSnyk(config)
-              //   sbomHelper.exportSourceCodeJSONWithSnyk(config)
-              //   sbomHelper.exportSourceCodeSARIFWithSnyk(config)
-              // }
+            // script {
+            //   sbomHelper.exportSourceCodeJSONWithSnyk(config)
+            //   sbomHelper.exportSourceCodeJSONWithSnyk(config)
+            //   sbomHelper.exportSourceCodeSARIFWithSnyk(config)
+            // }
             }
           }
         }
       } //SBOM
 
-      // Run Docker container based on First image
-      stage('Extract binary from image') {
+      // Artifactory
+      stage('Pushing to Artifactory') {
+        when { expression { config.runPublish } }
+        agent {
+          docker {
+            image 'releases-docker.jfrog.io/jfrog/jfrog-cli-full-v2-jf'
+            reuseNode true
+          }
+        }
         steps {
-          echo "Working with ${config.repoName}"
           script {
-            dockerHelper.getBinary(IMAGE_TAG,"/usr/local/bin/${config.repoName}")
+            artifactoryHelper.uploadArtifacts(config)
+            artifactoryHelper.uploadDockerImage(config)
           }
         }
       }
 
-      // Create PR to publish binary to compose-stack GITLAB repository
-      stage("create PR or MR") {
-        when { expression { config.createPullOrMergeRequest } }
-        steps {
-          echo "Working in ${config.scmProvider}"
-          script {
-            provider.createRequest(config)
-          }
-        }
-      }
+      // // Create PR to publish binary to compose-stack GITLAB repository
+      // stage('create PR or MR') {
+      //   when { expression { config.createPullOrMergeRequest } }
+      //   steps {
+      //     echo "Working in ${config.scmProvider}"
+      //     script {
+      //       provider.createRequest(config)
+      //     }
+      //   }
+      // }
 
       // Runs on agent - uses Docker CLI installed on agent
       // stage('Publish Image') {
@@ -298,20 +320,12 @@ def call(Closure configClosure) {
       //   }
       // }
 
-      stage('Deploy') {
-        when { expression { config.runDeployment } }
-        steps {
-          sh """
-            echo 'Hello Deploy !!!'
-          """
-        }
-      }
     } // stages
 
     post {
       always {
         archiveArtifacts(
-            artifacts: 'trivy-*.json, snyk-*.json, sbom-*.json, dependency-check-report/**',
+            artifacts: "bin/${config.repoName}, sca-*.json, sbom-*.json, dependency-check-report/**",
             allowEmptyArchive: true
         )
 
