@@ -6,7 +6,7 @@ import com.deifzar.ci.SCAStage
 import com.deifzar.ci.SBOMStage
 import com.deifzar.ci.TestStage
 import com.deifzar.ci.Docker
-import com.deifzar.ci.Artifactory
+// import com.deifzar.ci.Artifactory
 
 def call(Closure configClosure) {
   def config = [
@@ -88,7 +88,7 @@ def call(Closure configClosure) {
   def scaHelper = new SCAStage(this)
   def sbomHelper = new SBOMStage(this)
   def dockerHelper = new Docker(this)
-  def artifactoryHelper = new Artifactory(this)
+  // def artifactoryHelper = new Artifactory(this)
 
   pipeline {
     agent any  // Base agent with Docker, Git, Trivy
@@ -273,21 +273,21 @@ def call(Closure configClosure) {
       } //SBOM
 
       // Artifactory
-      stage('Pushing to Artifactory') {
-        when { expression { config.runPublish } }
-        agent {
-          docker {
-            image 'releases-docker.jfrog.io/jfrog/jfrog-cli-full-v2-jf'
-            reuseNode true
-          }
-        }
-        steps {
-          script {
-            artifactoryHelper.uploadArtifacts(config)
-            artifactoryHelper.uploadDockerImage(config)
-          }
-        }
-      }
+      // stage('Pushing to Artifactory') {
+      //   when { expression { config.runPublish } }
+      //   agent {
+      //     docker {
+      //       image 'releases-docker.jfrog.io/jfrog/jfrog-cli-full-v2-jf'
+      //       reuseNode true
+      //     }
+      //   }
+      //   steps {
+      //     script {
+      //       artifactoryHelper.uploadArtifacts(config)
+      //       artifactoryHelper.uploadDockerImage(config)
+      //     }
+      //   }
+      // }
 
       // // Create PR to publish binary to compose-stack GITLAB repository
       // stage('create PR or MR') {
