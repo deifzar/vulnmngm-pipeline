@@ -279,16 +279,10 @@ def call(Closure configClosure) {
           docker {
             image 'releases-docker.jfrog.io/jfrog/jfrog-cli-full-v2-jf'
             reuseNode true
+            args '-e JFROG_CLI_HOME_DIR=${WORKSPACE}/.jfrog'
           }
         }
         steps {
-          echo "Env variables"
-          echo "JOB_NAME:${env.JOB_NAME}"
-          echo "JOB_BASE_NAME:${env.JOB_BASE_NAME}"
-          echo "JOB_BASE_NAME:${env.WORKSPACE}"          
-          echo "BUILD_TAG: ${env.BUILD_TAG}"
-          echo "BUILD_Number: ${env.BUILD_NUMBER}"
-          echo "Branch name: ${env.BRANCH_NAME}"
           script {
             artifactoryHelper.uploadArtifacts(config)
             artifactoryHelper.uploadDockerImage(config)
