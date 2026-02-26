@@ -30,8 +30,6 @@ class Artifactory implements Serializable {
             configureJfCli(config)
             commandClosure()
             steps.sh """
-                jf c add my-server --url=${config.artifactoryUrl} --access-token=\${RT_TOKEN} --overwrite
-                ${uploadCommand}
                 jf rt build-collect-env
                 jf rt build-publish
             """
@@ -78,7 +76,7 @@ class Artifactory implements Serializable {
         steps.withCredentials([steps.string(credentialsId: config.artifactoryCredentialsId, variable: 'RT_TOKEN')]) {
             steps.sh """
                 # Login to Artifactory Docker registry
-                echo "\${RT_TOKEN}" | docker login ${artifactoryRegistry} -u info@deifzar.me --password-stdin
+                echo "\${RT_TOKEN}" | docker login ${artifactoryRegistry} -u ${config.artifactoryUsername} --password-stdin
                 
                 # Tag image for Artifactory
                 docker tag ${steps.env.IMAGE_TAG} ${targetTag}
