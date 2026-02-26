@@ -45,6 +45,7 @@ def call(Closure configClosure) {
     sonarqubeCredentialsId    : null,  // Jenkins credentials ID for SonarQube token
     sonarqubeUrl              : null,  // SonarQube server URL (e.g., 'https://sonar.example.com')
     // Artifactory config
+    artifactoryUsername       : null,
     artifactoryCredentialsId  : null,  // Jenkins credentials ID for Artifactory token 
     artifactoryUrl            : null,
     artifactoryGenericRepo    : null,  // e.g., 'cptm8-generic'
@@ -67,7 +68,7 @@ def call(Closure configClosure) {
     error 'sonarqube config variables must be defined'
   }
 
-  if (config.runPublish && (!config.artifactoryUrl || !config.artifactoryCredentialsId || !config.artifactoryGenericRepo || !config.artifactoryDockerRepo) ) {
+  if (config.runPublish && (!config.artifactoryUrl || !config.artifactoryUsername || !config.artifactoryCredentialsId || !config.artifactoryGenericRepo || !config.artifactoryDockerRepo) ) {
     error 'artifactory config variables must be defined'
   }
 
