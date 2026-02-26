@@ -30,8 +30,7 @@ class Artifactory implements Serializable {
             configureJfCli(config)
             commandClosure()
             steps.sh """
-                jf rt build-collect-env
-                jf rt build-publish
+                jf rt build-publish --collect-git-info --collect-env ${steps.env.JOB_NAME} ${steps.env.BUILD_NUMBER}
             """
         }
     }
