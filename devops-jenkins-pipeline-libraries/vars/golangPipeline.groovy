@@ -67,7 +67,7 @@ def call(Closure configClosure) {
     error 'sonarqube config variables must be defined'
   }
 
-  if (config.runPublish && (!config.artifactoryUrl || !config.artifactoryCredentialsId || !config.artifactoryRepoPath) ) {
+  if (config.runPublish && (!config.artifactoryUrl || !config.artifactoryCredentialsId || !config.artifactoryGenericRepo || !config.artifactoryDockerRepo) ) {
     error 'artifactory config variables must be defined'
   }
 
