@@ -274,18 +274,32 @@ def call(Closure configClosure) {
 
       // Artifactory
       stage('Pushing to Artifactory') {
+
         when { expression { config.runPublish } }
-        agent {
-          docker {
-            image 'releases-docker.jfrog.io/jfrog/jfrog-cli-full-v2-jf'
-            reuseNode true
-            args '-e JFROG_CLI_HOME_DIR=${WORKSPACE}/.jfrog'
+        
+        parallel {
+          stage ('Push artifacts') {
+            agent {
+              docker {
+                image 'releases-docker.jfrog.io/jfrog/jfrog-cli-full-v2-jf'
+                reuseNode true
+                args '-e JFROG_CLI_HOME_DIR=${WORKSPACE}/.jfrog'
+              }
+            }
+            steps {
+              script {
+                artifactoryHelper.uploadArtifacts(config)
+              }    
+            }
           }
-        }
-        steps {
-          script {
-            artifactoryHelper.uploadArtifacts(config)
-            artifactoryHelper.uploadDockerImage(config)
+
+          stage ('Push Docker image') {
+            steps {
+              script {
+                // Push Docker image from agent (has Docker access)
+                artifactoryHelper.uploadDockerImage(config)
+              }
+            }
           }
         }
       }

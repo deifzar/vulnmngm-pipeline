@@ -69,6 +69,26 @@ class Artifactory implements Serializable {
         }
     }
 
+    void uploadDockerImage(Map config) {
+        def envSuffix = getEnvironmentSuffix()
+        def dockerRepo = "${config.artifactoryDockerRepo}-${envSuffix}"
+        def artifactoryRegistry = config.artifactoryUrl.replace('https://', '').replace('http://', '')
+        def targetTag = "${artifactoryRegistry}/${dockerRepo}/${config.repoName}:${steps.env.BUILD_NUMBER}"
+        
+        steps.withCredentials([steps.string(credentialsId: config.artifactoryCredentialsId, variable: 'RT_TOKEN')]) {
+            steps.sh """
+                # Login to Artifactory Docker registry
+                echo "\${RT_TOKEN}" | docker login ${artifactoryRegistry} -u info@deifzar.me --password-stdin
+                
+                # Tag image for Artifactory
+                docker tag ${steps.env.IMAGE_TAG} ${targetTag}
+                
+                # Push to Artifactory
+                docker push ${targetTag}
+            """
+        }
+    }
+
     // Promote artifacts from one environment to another
     void promote(Map config, String sourceEnv, String targetEnv) {
         def genericSource = "${config.artifactoryGenericRepo}-${sourceEnv}-local"
