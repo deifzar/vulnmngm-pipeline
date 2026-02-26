@@ -22,7 +22,7 @@ class SCAStage implements Serializable {
                 --severity ${config.trivyThreshold} \\
                 --cache-dir /var/trivy-cache \\
                 --format json \\
-                --output sca-trivy-sourcecode-${config.repoName}.json \\
+                --output sca-${config.environment}-${config.repoName}-${steps.env.BUILD_NUMBER}-trivy-sourcecode.json \\
                 .
 
             # Table for human-readable console output
@@ -54,7 +54,7 @@ class SCAStage implements Serializable {
                 --severity ${config.trivyThreshold} \\
                 --cache-dir /var/trivy-cache \\
                 --format json \\
-                --output sca-trivy-image-${config.repoName}.json \\
+                --output sca-${config.environment}-${config.repoName}-${steps.env.BUILD_NUMBER}-trivy-image.json \\
                 ${steps.env.IMAGE_TAG}
 
             # Table for human-readable console output
@@ -85,7 +85,7 @@ class SCAStage implements Serializable {
                 --skip-dirs devops-ansible \\
                 --cache-dir /var/trivy-cache \\
                 --format json \\
-                --output sca-trivy-iac-${config.repoName}-${config.environment}-${steps.env.BUILD_NUMBER}-config.json \\
+                --output sca-${config.environment}-${config.repoName}-${steps.env.BUILD_NUMBER}-trivy-iac-config.json \\
                 ${target}
 
             # Table for human-readable console output
@@ -109,7 +109,7 @@ class SCAStage implements Serializable {
                 snyk test \\
                     --exclude ${excludeArg} \\
                     --severity-threshold=${config.snykThreshold} \\
-                    --json-file-output=sca-snyk-${config.repoName}-${config.environment}-${steps.env.BUILD_NUMBER}-sourcecode.json \\
+                    --json-file-output=sca-${config.environment}-${config.repoName}-${steps.env.BUILD_NUMBER}-snyk-sourcecode.json \\
                     || true
 
                 # Human-readable console output

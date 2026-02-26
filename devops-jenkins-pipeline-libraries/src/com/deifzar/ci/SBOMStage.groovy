@@ -15,7 +15,7 @@ class SBOMStage implements Serializable {
 
             trivy fs ${skipDirsArg} \\
                 --format cyclonedx \\
-                --output sbom-trivy-${config.repoName}-${config.environment}-${steps.env.BUILD_NUMBER}-sourcecode.trivy.cdx.json \\
+                --output sbom-${config.environment}-${config.repoName}-${steps.env.BUILD_NUMBER}-trivy-sourcecode.cdx.json \\
                 .
             """
     }
@@ -27,7 +27,7 @@ class SBOMStage implements Serializable {
 
             trivy fs ${skipDirsArg} \\
                 --format spdx-json \\
-                --output sbom-trivy-${config.repoName}-${config.environment}-${steps.env.BUILD_NUMBER}-sourcecode.trivy.spdx.json \\
+                --output sbom-${config.environment}-${config.repoName}-${steps.env.BUILD_NUMBER}-trivy-sourcecode.spdx.json \\
                 .
             """
     }
@@ -39,7 +39,7 @@ class SBOMStage implements Serializable {
 
             trivy image  ${skipDirsArg} \\
                 --format cyclonedx \\
-                --output sbom-trivy-${config.repoName}-${config.environment}-${steps.env.BUILD_NUMBER}-image.trivy.cdx.json \\
+                --output sbom-${config.env}-trivy-${config.repoName}-${steps.env.BUILD_NUMBER}-image.trivy.cdx.json \\
                 ${steps.env.IMAGE_TAG}
             """
     }
@@ -49,7 +49,7 @@ class SBOMStage implements Serializable {
             echo "Export SPDX format (alternative) with Trivy and Docker image"
             trivy image \\
                 --format spdx-json \\
-                --output sbom-trivy-${config.repoName}-${config.environment}-${steps.env.BUILD_NUMBER}-image.trivy.spdx.json \\
+                --output sbom-${config.environment}-${config.repoName}-${steps.env.BUILD_NUMBER}-trivy-image.spdx.json \\
                 ${steps.env.IMAGE_TAG}
             """
     }
@@ -60,8 +60,8 @@ class SBOMStage implements Serializable {
             echo "Export JSON format with Snyk"
             snyk sbom --exclude ${excludeArg} \\
                 --severity-threshold=${config.snykThreshold} \\
-                --json-file-output=sbom-snyk-${config.repoName}-${config.environment}-${steps.env.BUILD_NUMBER}-sourcecode.snyk.json \\
-                --sarif-file-output=sbom-snyk-${config.repoName}-${config.environment}-${steps.env.BUILD_NUMBER}-sourcecode.snyk.sarif.json \\
+                --json-file-output=sbom-${config.environment}-${config.repoName}-${steps.env.BUILD_NUMBER}-snyk-sourcecode.json \\
+                --sarif-file-output=sbom-${config.environment}-${config.repoName}-${steps.env.BUILD_NUMBER}-snyk-sourcecode.sarif.json \\
                 || true
             """
     }
@@ -72,7 +72,7 @@ class SBOMStage implements Serializable {
             steps.sh """
                 snyk sbom --exclude ${excludeArg} \\
                 --format=cyclonedx1.6+xml \\
-                --json-file-output sbom-snyk-${config.repoName}-${config.environment}-${steps.env.BUILD_NUMBER}-sourcecode.snyk.cdx.json
+                --json-file-output sbom-${config.environment}-${config.repoName}-${steps.env.BUILD_NUMBER}-snyk-sourcecode.cdx.json
             """
         }
     }
@@ -83,7 +83,7 @@ class SBOMStage implements Serializable {
             steps.sh """
                 snyk sbom --exclude ${excludeArg} \\
                 --format spdx2.3+json \\
-                --json-file-output sbom-snyk-${config.repoName}-${config.environment}-${steps.env.BUILD_NUMBER}-sourcecode-.snyk.spdx.json
+                --json-file-output sbom-${config.environment}-${config.repoName}-${steps.env.BUILD_NUMBER}-snyk-sourcecode.spdx.json
             """
         }
     }

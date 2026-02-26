@@ -284,6 +284,8 @@ def call(Closure configClosure) {
         steps {
           echo "Env variables"
           echo "JOB_NAME:${env.JOB_NAME}"
+          echo "JOB_BASE_NAME:${env.JOB_BASE_NAME}"
+          echo "JOB_BASE_NAME:${env.WORKSPACE}"          
           echo "BUILD_TAG: ${env.BUILD_TAG}"
           echo "BUILD_Number: ${env.BUILD_NUMBER}"
           echo "Branch name: ${env.BRANCH_NAME}"
