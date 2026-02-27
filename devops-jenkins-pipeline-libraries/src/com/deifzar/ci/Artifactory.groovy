@@ -88,6 +88,7 @@ class Artifactory implements Serializable {
             steps.sh """
             # Delete Docker image
             docker rmi ${targetTag} || true
+            docker image prune -f || true
             """
         }
     }
