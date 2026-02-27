@@ -296,10 +296,11 @@ def call(Closure configClosure) {
 
           stage ('Push Docker image') {
             agent {
+              // Needs to run the docker as root
               docker {
                 image 'releases-docker.jfrog.io/jfrog/jfrog-cli-full-v2-jf'
                 reuseNode true
-                args '-e JFROG_CLI_HOME_DIR=${WORKSPACE}/.jfrog -v /var/run/docker.sock:/var/run/docker.sock'
+                args '-e JFROG_CLI_HOME_DIR=${WORKSPACE}/.jfrog -e DOCKER_CONFIG=${WORKSPACE}/.docker -v /var/run/docker.sock:/var/run/docker.sock --user root'
               }
             }
             steps {
