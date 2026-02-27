@@ -84,6 +84,11 @@ class Artifactory implements Serializable {
                 --build-name=${steps.env.JOB_NAME} \\
                 --build-number=${steps.env.BUILD_NUMBER}
             """
+
+            steps.sh """
+            # Delete Docker image
+            docker rmi ${targetTag} || true
+            """
         }
     }
 
