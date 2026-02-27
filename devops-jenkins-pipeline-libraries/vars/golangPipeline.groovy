@@ -284,7 +284,7 @@ def call(Closure configClosure) {
               docker {
                 image 'releases-docker.jfrog.io/jfrog/jfrog-cli-full-v2-jf'
                 reuseNode true
-                args '-e JFROG_CLI_HOME_DIR=${WORKSPACE}/.jfrog'
+                args '-e JFROG_CLI_HOME_DIR=${WORKSPACE}/.jfrog-artifacts'
               }
             }
             steps {
@@ -300,7 +300,7 @@ def call(Closure configClosure) {
               docker {
                 image 'releases-docker.jfrog.io/jfrog/jfrog-cli-full-v2-jf'
                 reuseNode true
-                args '-e JFROG_CLI_HOME_DIR=${WORKSPACE}/.jfrog -e DOCKER_CONFIG=${WORKSPACE}/.docker -v /var/run/docker.sock:/var/run/docker.sock --user root'
+                args '-e JFROG_CLI_HOME_DIR=${WORKSPACE}/.jfrog-docker -e DOCKER_CONFIG=${WORKSPACE}/.docker -v /var/run/docker.sock:/var/run/docker.sock --user root'
               }
             }
             steps {
