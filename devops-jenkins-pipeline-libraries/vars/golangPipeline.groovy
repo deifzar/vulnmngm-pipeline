@@ -295,6 +295,13 @@ def call(Closure configClosure) {
           }
 
           stage ('Push Docker image') {
+            agent {
+              docker {
+                image 'releases-docker.jfrog.io/jfrog/jfrog-cli-full-v2-jf'
+                reuseNode true
+                args '-e JFROG_CLI_HOME_DIR=${WORKSPACE}/.jfrog -v /var/run/docker.sock:/var/run/docker.sock'
+              }
+            }
             steps {
               script {
                 // Push Docker image from agent (has Docker access)

@@ -72,16 +72,17 @@ class Artifactory implements Serializable {
         def artifactoryRegistry = config.artifactoryUrl.replace('https://', '').replace('http://', '')
         def targetTag = "${artifactoryRegistry}/${dockerRepo}/${config.repoName}:${steps.env.BUILD_NUMBER}"
         
-        steps.withCredentials([steps.string(credentialsId: config.artifactoryCredentialsId, variable: 'RT_TOKEN')]) {
+        runJfCommand(config) {
             steps.sh """
-                # Login to Artifactory Docker registry
-                echo "\${RT_TOKEN}" | docker login ${artifactoryRegistry} -u ${config.artifactoryUsername} --password-stdin
-                
-                # Tag image for Artifactory
-                docker tag ${steps.env.IMAGE_TAG} ${targetTag}
-                
-                # Push to Artifactory
-                docker push ${targetTag}
+            # Tag image for Artifactory with Docker CLI
+            docker tag ${steps.env.IMAGE_TAG} ${targetTag}
+            """
+            // push
+            steps.sh """
+            # Push to Artifactory
+            jf docker push ${targetTag} \\
+                --build-name=${steps.env.JOB_NAME} \\
+                --build-number=${steps.env.BUILD_NUMBER}
             """
         }
     }
