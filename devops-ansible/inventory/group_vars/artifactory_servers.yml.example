@@ -1,0 +1,22 @@
+# Artifactory Configuration Example
+# Copy this file to artifactory_servers.yml and fill in your actual values
+#
+# cp artifactory_servers.yml.example artifactory_servers.yml
+
+artifactory_domain: "<FQDN_artifactory>"
+artifactory_listen_address: "127.0.0.1"
+artifactory_port: 8081
+
+# Database configuration (Azure PostgreSQL)
+artifactory_db_host: "<FQDN_postgresql_db>"
+artifactory_db_port: 5432
+artifactory_db_name: "<>"
+artifactory_db_username: "<>"
+# Reference the Ansible Vault variable
+artifactory_db_password: "{{ <parameter_name> }}"
+
+# Reference the Azure Key Vault secret name with the PostgreSQL password
+# artifactory_psql_secret_name: "<kv_db_secret_parameter>"
+
+# Reference the AWS Secret Manager ARN with the PostgreSQL password
+artifactory_psql_secret_name: "<ARN_secret>"
