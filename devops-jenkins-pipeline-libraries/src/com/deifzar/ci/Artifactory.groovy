@@ -36,7 +36,8 @@ class Artifactory implements Serializable {
     }
 
     void uploadArtifacts(Map config) {
-        def envSuffix = getEnvironmentSuffix()
+        // def envSuffix = getEnvironmentSuffix()
+        def envSuffix = 'dev-local'
         def genericRepo = "${config.artifactoryGenericRepo}-${envSuffix}"
         
         runJfCommand(config) {
@@ -67,7 +68,8 @@ class Artifactory implements Serializable {
     }
 
     void uploadDockerImage(Map config) {
-        def envSuffix = getEnvironmentSuffix()
+        // def envSuffix = getEnvironmentSuffix()
+        def envSuffix = 'dev-local'
         def dockerRepo = "${config.artifactoryDockerRepo}-${envSuffix}"
         def artifactoryRegistry = config.artifactoryUrl.replace('https://', '').replace('http://', '')
         def targetTag = "${artifactoryRegistry}/${dockerRepo}/${config.repoName}:${steps.env.BUILD_NUMBER}"
@@ -94,14 +96,14 @@ class Artifactory implements Serializable {
     }
 
     // Promote artifacts from one environment to another
-    void promote(Map config, String sourceEnv, String targetEnv) {
+    void promote(Map config, Int buildNumber, String sourceEnv, String targetEnv) {
         def genericSource = "${config.artifactoryGenericRepo}-${sourceEnv}-local"
         def genericTarget = "${config.artifactoryGenericRepo}-${targetEnv}-local"
         
         steps.withCredentials([steps.string(credentialsId: config.artifactoryCredentialsId, variable: 'RT_TOKEN')]) {
             configureJfCli(config)
             steps.sh """
-                jf rt build-promote ${steps.env.JOB_NAME} ${steps.env.BUILD_NUMBER} \\
+                jf rt build-promote ${steps.env.JOB_NAME} ${buildNumber} \\
                     ${genericTarget} \\
                     --source-repo=${genericSource} \\
                     --status='Promoted to ${targetEnv}' \\

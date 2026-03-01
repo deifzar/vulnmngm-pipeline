@@ -94,6 +94,11 @@ def call(Closure configClosure) {
   pipeline {
     agent any  // Base agent with Docker, Git, Trivy
 
+    // parameters {
+    //     string(name: 'BUILD_NUMBER_TO_PROMOTE', description: 'Build number to promote')
+    //     choice(name: 'TARGET_REPO', choices: ['libs-staging-local', 'libs-release-local'], description: 'Target repository')
+    // }
+
     options {
       timestamps()
       ansiColor('xterm')
@@ -116,7 +121,7 @@ def call(Closure configClosure) {
           checkout scm
         }
       }
-
+      // Always runs - on PR and on merge
       stage('Build') {
         parallel {
           stage('Building Go Binary') {
@@ -135,16 +140,28 @@ def call(Closure configClosure) {
             }
             steps {
               script {
-                buildHelper.buildBinaryWithGo(config)
+                try {
+                  buildHelper.buildBinaryWithGo(config)
+                  provider.postStatus(config, 'CI/Build-GoBinary', 'SUCCESS', 'Build Go binary passed')
+                } catch(err) {
+                  provider.postStatus(config, 'CI/Build-GoBinary', 'FAILURE', 'Build Go binary failed')
+                  throw err  // Re-throw to fail the stage
+                }
               }
             }
           }
           stage('Building Docker Microservice') {
             steps {
               script {
-                buildHelper.buildDocker(config)
-                echo "Extracting binary `${config.repoName}` from Docker image"
-                dockerHelper.getBinary(IMAGE_TAG, "/usr/local/bin/${config.repoName}")
+                try {
+                  buildHelper.buildDocker(config)
+                  echo "Extracting binary `${config.repoName}` from Docker image"
+                  dockerHelper.getBinary(IMAGE_TAG, "/usr/local/bin/${config.repoName}")
+                  provider.postStatus(config, 'CI/Build-Docker', 'SUCCESS', 'Build docker passed')
+                } catch (err) {
+                  provider.postStatus(config, 'CI/Build-Docker', 'FAILURE', 'Build docker failed')
+                  throw err  // Re-throw to fail the stage
+                }
               }
             }
           }
@@ -162,10 +179,17 @@ def call(Closure configClosure) {
         }
         steps {
           script {
-            testHelper.testWithGo(config)
+            try {
+                provider.postStatus(config, 'CI/Test', 'PENDING', 'Running tests...')
+                testHelper.testWithGo(config)
+                provider.postStatus(config, 'CI/Test', 'SUCCESS', 'Tests passed')
+            } catch (err) {
+              provider.postStatus(config, 'CI/Test', 'FAILURE', 'Tests failed')
+              throw err  // Re-throw to fail the stage
+            }
           }
         }
-      }
+      } // Test
 
       // SAST - Static Application Security Testing with SonarQube
       stage('SAST') {
@@ -177,10 +201,15 @@ def call(Closure configClosure) {
             args "-e SONAR_USER_HOME=${WORKSPACE}/.sonar" // Define a writable home directory for Sonar inside the workspace
           }
         }
-
         steps {
           script {
-            sastHelper.runSonarqubeCLIFromDocker(config)
+            try {
+              sastHelper.runSonarqubeCLIFromDocker(config)
+              provider.postStatus(config, 'CI/SAST', 'SUCCESS', 'SAST passed')
+            } catch (err) {
+              provider.postStatus(config, 'CI/SAST', 'FAILURE', 'SAST failed')
+              throw err  // Re-throw to fail the stage
+            }
           }
         }
       }
@@ -193,8 +222,14 @@ def call(Closure configClosure) {
             steps {
               echo 'Scanning Source Code with Trivy:'
               script {
-                // Note: misconfig scanner disabled here to avoid Trivy Ansible parser bug
-                scaHelper.scanSourceCodeWithTrivy(config)
+                try {
+                  // Note: misconfig scanner disabled here to avoid Trivy Ansible parser bug
+                  scaHelper.scanSourceCodeWithTrivy(config)
+                  provider.postStatus(config, 'CI/SCA-Trivy-Source', 'SUCCESS', 'SCA - Trivy source code passed')
+                } catch (err) {
+                  provider.postStatus(config, 'CI/SCA-Trivy-Source', 'FAILURE', 'SCA - Trivy source code failed')
+                  throw err  // Re-throw to fail the stage
+                }
               }
             // OWASP Dependency Checks
             // dependencyCheck additionalArguments: '--failOnCVSS 7'
@@ -205,7 +240,13 @@ def call(Closure configClosure) {
             steps {
               echo "Scanning Docker image with Trivy: ${IMAGE_TAG}"
               script {
-                scaHelper.scanContainerImageWithTrivy(config)
+                try {
+                  scaHelper.scanContainerImageWithTrivy(config)
+                  provider.postStatus(config, 'CI/SCA-Trivy-Image', 'SUCCESS', 'SCA - Trivy image scan passed')
+                } catch (err) {
+                  provider.postStatus(config, 'CI/SCA-Trivy-Image', 'FAILURE', 'SCA - Trivy image scan failed')
+                  throw err  // Re-throw to fail the stage
+                }
               }
             }
           }
@@ -214,7 +255,13 @@ def call(Closure configClosure) {
             steps {
               echo 'Scanning Misconfig IaC - Dockerfile:'
               script {
-                scaHelper.scanIaCWithTrivy(config, 'dockerfile')
+                try {
+                  scaHelper.scanIaCWithTrivy(config, 'dockerfile')
+                  provider.postStatus(config, 'CI/SCA-Trivy-Dockerfile', 'SUCCESS', 'SCA - Trivy dockerfile passed')
+                } catch (err) {
+                  provider.postStatus(config, 'CI/SCA-Trivy-Dockerfile', 'FAILURE', 'SCA - Trivy dockerfile failed')
+                  throw err  // Re-throw to fail the stage
+                }
               }
             }
           }
@@ -230,7 +277,13 @@ def call(Closure configClosure) {
             steps {
               echo 'Scanning Source Code with Snyk:'
               script {
+                try {
                   scaHelper.scanSourceCodeWithSnyk(config)
+                  provider.postStatus(config, 'CI/SCA-Snyk-Source', 'SUCCESS', 'SCA - Snyk source code passed')
+                } catch (err) {
+                  provider.postStatus(config, 'CI/SCA-Snyk-Source', 'FAILURE', 'SCA - Snyk source code failed')
+                  throw err  // Re-throw to fail the stage
+                }
               }
             }
           }
@@ -244,12 +297,14 @@ def call(Closure configClosure) {
             steps {
               echo 'Trivy SBOM'
               script {
-                sbomHelper.exportSourceCodeSPDXWithTrivy(config)
-                sbomHelper.exportSourceCodeCyclonDXWithTrivy(config)
-              // Snyk needs entripise account
-              // sbomHelper.exportSourceCodeJSONWithSnyk(config)
-              // sbomHelper.exportSourceCodeJSONWithSnyk(config)
-              // sbomHelper.exportSourceCodeSARIFWithSnyk(config)
+                try {
+                  sbomHelper.exportSourceCodeSPDXWithTrivy(config)
+                  sbomHelper.exportSourceCodeCyclonDXWithTrivy(config)
+                  provider.postStatus(config, 'CI/SBOM-Trivy', 'SUCCESS', 'SBOM - Trivy passed')
+                } catch (err) {
+                  provider.postStatus(config, 'CI/SBOM-Trivy', 'FAILURE', 'SBOM - Trivy failed')
+                  throw err  // Re-throw to fail the stage
+                }
               }
             }
           }
@@ -264,19 +319,31 @@ def call(Closure configClosure) {
             steps {
               echo 'Snyk SBOM (needs an enterprise account)'
             // script {
+            //  try {
             //   sbomHelper.exportSourceCodeJSONWithSnyk(config)
             //   sbomHelper.exportSourceCodeJSONWithSnyk(config)
-            //   sbomHelper.exportSourceCodeSARIFWithSnyk(config)
+            //   sbomHelper.exportSourceCodeSARIFWithSnyk(config) 
+            //   provider.postStatus(config, 'CI/SBOM-Snyk', 'SUCCESS', 'SBOM - Snyk passed')
+            //  } catch (err) {
+            //   provider.postStatus(config, 'CI/SBOM-Snyk', 'FAILURE', 'SBOM - Snyk failed')
+            //   throw err  // Re-throw to fail the stage
+            //  }
             // }
             }
           }
         }
-      } //SBOM
+      } //SBOM    
 
-      // Artifactory
+      // ONLY on merge to dev - NOT on PR / MR
       stage('Pushing to Artifactory') {
 
-        when { expression { config.runPublish } }
+        when { 
+          expression { config.runPublish } 
+          not { changeRequest() }  // Skip on PRs
+          anyOf {
+            branch 'dev'
+          }
+        }
         
         parallel {
           stage ('Push artifacts') {
@@ -309,6 +376,41 @@ def call(Closure configClosure) {
                 artifactoryHelper.uploadDockerImage(config)
               }
             }
+          }
+        } // parallel
+      }
+
+      // ONLY on merge to main - NOT on PR / MR
+      // will always promote what was just uploaded to dev
+      stage('Promote to Staging') {
+        when {
+          branch 'main'
+          not { changeRequest() }
+        }
+        agent {
+          docker {
+            image 'releases-docker.jfrog.io/jfrog/jfrog-cli-full-v2-jf'
+            reuseNode true
+            args '-e JFROG_CLI_HOME_DIR=${WORKSPACE}/.jfrog -e DOCKER_CONFIG=${WORKSPACE}/.docker --user root'
+          }
+        }
+        steps {
+          script {
+            // Request approval before promoting
+            def approver = input(
+              message: 'Promote to Staging?',
+              ok: 'Approve',
+              submitter: 'tech-leads,release-managers',  // Limit who can approve
+              parameters: [
+                string(
+                  name: 'APPROVER_NOTES',
+                  defaultValue: '',
+                  description: 'Optional notes for audit trail'
+                )
+              ]
+            )
+            def buildToPromote = env.BUILD_NUMBER
+            artifactoryHelper.promote(config, buildToPromote, 'dev', 'staging')
           }
         }
       }
@@ -362,9 +464,15 @@ def call(Closure configClosure) {
 
       success {
         echo "✅ Pipeline completed successfully for ${config.repoName} build #${env.BUILD_NUMBER}"
+        script {
+          provider.postStatus(config, 'CI/Pipeline', 'SUCCESS', 'All checks passed')
+        }
       }
       failure {
         echo "❌ Pipeline failed for ${config.repoName} build #${env.BUILD_NUMBER}"
+        script {
+          provider.postStatus(config, 'CI/Pipeline', 'FAILURE', 'Pipeline failed')
+        }
       }
     } //post
   } // pipeline

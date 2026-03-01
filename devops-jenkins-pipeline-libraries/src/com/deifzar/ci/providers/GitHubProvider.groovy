@@ -53,7 +53,7 @@ class GitHubProvider implements Serializable {
           gh pr create \\
             --title "Update ${config.serviceName} binary (microservices build #${env.BUILD_NUMBER})" \\
             --body "Automated PR from Jenkins pipeline.\\n\\n- Service: ${config.serviceName}\\n- Build: #${env.BUILD_NUMBER}\\n- Source: ${env.BUILD_URL}" \\
-            --base main \\
+            --base ${env.BRANCH_NAME} \\
             --head ${branchName}
 
           # Enable auto-merge (squash)
@@ -66,5 +66,14 @@ class GitHubProvider implements Serializable {
         rm -rf compose-stack
         """
     }
+  }
+
+  void postStatus (Map config, String context, String status, String description) {
+    // status: PENDING, SUCCESS, FAILURE, ERROR
+    steps.githubNotify(
+      context: context,
+      status: status,
+      description: description
+    )
   }
 }

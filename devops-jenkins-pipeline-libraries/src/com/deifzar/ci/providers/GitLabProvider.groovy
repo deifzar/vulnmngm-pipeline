@@ -73,4 +73,14 @@ class GitLabProvider implements Serializable {
       """
     }
   }
+
+  void postStatus (Map config, String context, String status, String description) {
+    // status: PENDING, SUCCESS, FAILURE, ERROR
+    def gitlabState = status.toLowerCase()
+    if (gitlabState == 'failure') gitlabState = 'failed'
+    steps.updateGitlabCommitStatus(
+      name: context,
+      state: gitlabState
+    )
+  }
 }
