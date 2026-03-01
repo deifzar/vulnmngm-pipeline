@@ -1,7 +1,7 @@
 ---
 - name: Deploy Jenkins Controller with Nginx reverse proxy
   hosts: jenkins_controllers
-  become: yes
+  become: true
 
   pre_tasks:
     - name: Verify connection
@@ -15,6 +15,9 @@
         msg: "Deploying to {{ inventory_hostname }} ({{ ansible_host }})"
 
   roles:
+    - role: common
+      tags: ["jenkins", "app"]
+
     - role: security_baseline
       tags: ["security", "baseline"]
 

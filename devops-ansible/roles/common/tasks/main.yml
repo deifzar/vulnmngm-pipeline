@@ -1,0 +1,75 @@
+- name: Install common packages
+  apt:
+    name: "{{ common_packages }}"
+    state: present
+    update_cache: yes
+
+- name: Install AWS CLI
+  when: cloud_provider == "aws"
+  block:
+    - name: Check if AWS CLI exists
+      stat:
+        path: /usr/local/bin/aws
+      register: aws_cli
+    - name: Download AWS CLI
+      get_url:
+        url: https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip
+        dest: /tmp/awscliv2.zip
+        mode: "0644"
+      when: not aws_cli.stat.exists
+    - name: Extract AWS CLI
+      unarchive:
+        src: "/tmp/awscliv2.zip"
+        dest: /tmp/
+        remote_src: yes
+      when: not aws_cli.stat.exists
+    - name: Install AWS CLI
+      shell: /tmp/aws/install
+      when: not aws_cli.stat.exists
+
+- name: Update AWS CLI
+  when: cloud_provider == "aws"
+  tags: ['never', 'aws-update', 'cli-update']
+  block:
+    - name: Download AWS CLI for update
+      get_url:
+        url: https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip
+        dest: /tmp/awscliv2.zip
+        mode: "0644"
+        force: yes
+    - name: Extract AWS CLI for update
+      unarchive:
+        src: "/tmp/awscliv2.zip"
+        dest: /tmp/
+        remote_src: yes
+    - name: Run AWS CLI update
+      shell: /tmp/aws/install --bin-dir /usr/local/bin --install-dir /usr/local/aws-cli --update
+
+- name: Install Azure CLI
+  when: cloud_provider == "azure"
+  block:
+    - name: Check if AZ cli exists
+      stat:
+        path: /usr/bin/az
+      register: az_cli
+
+    - name: Install AZ cli
+      shell: curl -sL https://aka.ms/InstallAzureCLIDeb | bash
+      when: not az_cli.stat.exists
+
+- name: Update Azure CLI
+  when: cloud_provider == "azure"
+  tags: ['never', 'azure-update', 'cli-update']
+  shell: az upgrade
+
+# Normal deployment (install only, no updates due to the 'never' tag)
+# ansible-playbook playbooks/deploy_sonarqube.yml
+
+# Update AWS CLI only
+# ansible-playbook playbooks/deploy_sonarqube.yml --tags aws-update
+
+# Update Azure CLI only
+# ansible-playbook playbooks/deploy_sonarqube.yml --tags azure-update
+
+# Update both CLIs (whichever is applicable based on cloud_provider)
+# ansible-playbook playbooks/deploy_sonarqube.yml --tags cli-update

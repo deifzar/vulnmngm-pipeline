@@ -4,6 +4,7 @@ After=syslog.target network.target
 
 [Service]
 Type=forking
+ExecStartPre={{ sonarqube_install_dir }}/get-db-password.sh
 ExecStart={{ sonarqube_install_dir }}/bin/linux-x86-64/sonar.sh start
 ExecStop={{ sonarqube_install_dir }}/bin/linux-x86-64/sonar.sh stop
 User=sonarqube

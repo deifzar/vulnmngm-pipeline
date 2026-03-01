@@ -42,13 +42,14 @@
     - { direction: "incoming", policy: "deny" }
     - { direction: "outgoing", policy: "allow" }
 
-- name: Allow SSH from subnet devops only
+- name: Allow SSH from trusted subnets
   ufw:
     rule: allow
     port: "22"
     proto: tcp
-    from_ip: "{{ azure_subnet_devsecops_ip_range }}"
-    comment: "SSH from {{ azure_subnet_devsecops_ip_range }}"
+    from_ip: "{{ item }}"
+    comment: "SSH from {{ item }}"
+  loop: "{{ trusted_subnets }}"
   when: "'jenkins_agents' in group_names"
 
 - name: Allow SSH from specific external IPs only
@@ -61,14 +62,16 @@
   loop: "{{ ssh_allowed_sources }}"
   when: "'jenkins_controllers' or 'sonarqube_servers' in group_names"
 
-- name: Allow Jenkins JNLP agent
+- name: Allow Jenkins JNLP agents
   ufw:
     rule: allow
     port: "50000"
     proto: tcp
-    from_ip: "{{ azure_subnet_devsecops_ip_range }}"
-    comment: "Jenkins JNLP agent TCP from {{ azure_subnet_devsecops_ip_range }}"
+    from_ip: "{{ item }}"
+    comment: "Jenkins JNLP agent TCP from {{ item }}"
+  loop: "{{ trusted_subnets }}"
   when: "'jenkins_controllers' in group_names"
+
 
 - name: Allow HTTP traffic
   ufw:

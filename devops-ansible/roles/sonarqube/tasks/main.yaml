@@ -4,8 +4,6 @@
     name:
       - fontconfig
       - openjdk-21-jre
-      - zip
-      - unzip
     state: present
 
 - name: Configure system limits for SonarQube
@@ -80,6 +78,15 @@
     mode: "0600"
   notify: Restart SonarQube
 
+- name: Configure Sonarqube auto password retrieval
+  template:
+    src: getpassworddb.{{cloud_provider}}.sh.j2
+    dest: "{{ sonarqube_install_dir }}/get-db-password.sh"
+    owner: sonarqube
+    group: sonarqube
+    mode: "550"
+  notify: Restart SonarQube
+
 - name: Create SonarQube systemd service
   template:
     src: sonarqube.service.j2
@@ -118,7 +125,7 @@
     delay: 10
     timeout: 600
   register: sonarqube_port_wait
-  ignore_errors: yes
+  ignore_errors: true
 
 - name: Check SonarQube logs if port wait failed
   command: tail -100 {{ sonarqube_install_dir }}/logs/sonar.log
@@ -140,13 +147,13 @@
   uri:
     url: "http://{{ sonarqube_listen_address }}:{{ sonarqube_port }}/api/system/status"
     method: GET
-    return_content: yes
+    return_content: true
     status_code: 200
   register: sonarqube_status
   until: sonarqube_status.json.status == "UP"
   retries: 30
   delay: 20
-  ignore_errors: yes
+  ignore_errors: true
 
 - name: Display SonarQube status
   debug:

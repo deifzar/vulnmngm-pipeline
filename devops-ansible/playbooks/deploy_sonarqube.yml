@@ -1,7 +1,7 @@
 ---
 - name: Deploy SonarQube with Nginx reverse proxy
   hosts: sonarqube_servers
-  become: yes
+  become: true
 
   pre_tasks:
     - name: Verify connection
@@ -12,6 +12,9 @@
         msg: "Deploying SonarQube to {{ inventory_hostname }} ({{ ansible_host }})"
 
   roles:
+    - role: common
+      tags: ["sonarqube", "app"]
+      
     - role: security_baseline
       tags: ["security", "baseline"]
 

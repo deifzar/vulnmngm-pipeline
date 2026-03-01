@@ -1,7 +1,7 @@
 ---
 - name: Deploy Jenkins Agent with Nginx reverse proxy
   hosts: jenkins_agents
-  become: yes
+  become: true
 
   pre_tasks:
     - name: Verify connection
@@ -15,6 +15,9 @@
         msg: "Deploying to {{ inventory_hostname }} ({{ ansible_host }})"
 
   roles:
+    - role: common
+      tags: ["jenkins", "jenkins_agent"]
+    
     - role: security_baseline
       tags: ["security", "baseline"]
 
